@@ -1,0 +1,3 @@
+const defaults={name:'可爱的老师',bio:'认真上课，也要认真爱自己。',gender:'未设置',region:'',phone:'',wechat:'',avatar:''};
+export function normalizeProfile(raw={}){const p={...defaults};for(const k of Object.keys(p))if(typeof raw?.[k]==='string')p[k]=raw[k];return p;}
+export function patchProfile(old,input){const p=normalizeProfile({...old,...input});p.name=p.name.trim();if(!p.name||p.name.length>24)throw Error('名字需要1～24个字');if(!['未设置','男','女','不透露'].includes(p.gender))throw Error('性别选项无效');if(p.phone&&!/^1[3-9]\d{9}$/.test(p.phone))throw Error('请填写11位手机号');if(p.bio.length>80||p.region.length>60||p.wechat.length>40)throw Error('资料内容过长');if(p.avatar&&(!/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(p.avatar)||p.avatar.length>700000))throw Error('头像格式或大小不正确');return p;}

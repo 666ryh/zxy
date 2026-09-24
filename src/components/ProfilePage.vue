@@ -23,7 +23,7 @@ function open(action){if(action==='attendance')navigate('attendance');else{if(ac
   </view>
   <view class="profile-body">
    <view class="identity-card">
-    <view class="identity-top"><view class="profile-avatar"><CharacterImage   /></view><button role="button" tabindex="0" class="edit-profile" @click="state.modal={type:'profile'}"><AppIcon name="edit" :size="15" />编辑资料</button></view>
+    <view class="identity-top"><view class="profile-avatar"><CharacterImage :src="state.profile.avatar||CHARACTER" label="个人头像" /></view><button role="button" tabindex="0" class="edit-profile" @click="state.profileEditing=true"><AppIcon name="edit" :size="15" />编辑资料</button></view>
     <text class="profile-name">{{state.profile.name}}</text>
     <view class="identity-tags"><text class="identity-tag">教师的日常</text><text class="identity-tag light">{{state.user?'邮箱已登录':'访客体验'}}</text></view>
     <text class="profile-bio">{{state.profile.bio||'这里，装着我的教学与生活。'}}</text>

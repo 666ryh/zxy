@@ -1,9 +1,10 @@
+import {normalizeProfile,patchProfile} from './domain/profile.js';
 import {reactive,computed} from 'vue';
 import {emptyData,dateKey,addDays,saveStudent,scheduleLessons,transition,parseBackup} from './domain/domain.js';
 import {saveSalarySettings,addCommission} from './domain/salary.js';
 import {readSaved,writeSaved} from './storage.js';
 export const CHARACTER='/static/characters/kuromi-official.png';
-export const state=reactive({ready:false,user:null,guest:false,mode:'development',data:emptyData(),profile:{name:'可爱的老师',bio:'认真上课，也要认真爱自己。'},loadError:'',tab:'profile',selected:dateKey(),month:dateKey().slice(0,7),modal:null});
+export const state=reactive({ready:false,user:null,guest:false,mode:'development',data:emptyData(),profile:normalizeProfile(),loadError:'',tab:'profile',selected:dateKey(),profileEditing:false,month:dateKey().slice(0,7),modal:null});
 export const key=()=>state.user?`kejian-account-${state.user.email}`:'kejian-data';
 function get(k){let result;
  // #ifdef H5
@@ -29,9 +30,10 @@ export async function api(route,body){
  throw Error('当前为H5预览，原生登录服务将在鸿蒙适配阶段配置');
  // #endif
 }
-export function load(){state.data=emptyData();state.loadError='';state.profile={name:'可爱的老师',bio:'认真上课，也要认真爱自己。'};try{state.data=readSaved(get,key());}catch(e){state.loadError=e.message;}try{const p=get(key()+'-profile');if(p){const profile=typeof p==='string'?JSON.parse(p):p;state.profile={name:typeof profile?.name==='string'?profile.name:'可爱的老师',bio:typeof profile?.bio==='string'?profile.bio:''};}}catch{notify('个人资料读取失败，可重新编辑；教学记录不受影响');}}
+export function load(){state.data=emptyData();state.loadError='';state.profile=normalizeProfile();try{state.data=readSaved(get,key());}catch(e){state.loadError=e.message;}try{const p=get(key()+'-profile');if(p){const profile=typeof p==='string'?JSON.parse(p):p;state.profile=normalizeProfile(profile);}}catch{notify('个人资料读取失败，可重新编辑；教学记录不受影响');}}
 export function mutate(fn){if(state.loadError)throw Error('原数据读取异常，请先导出原始备份后恢复');const next=JSON.parse(JSON.stringify(state.data));fn(next);writeSaved(set,key(),next);state.data=next;}
-export function saveProfile(input){const name=String(input.name||'').trim().slice(0,24);if(!name)throw Error('请填写昵称');const profile={name,bio:String(input.bio||'').trim().slice(0,80)};set(key()+'-profile',profile);state.profile=profile;}
+export function saveProfile(input){const profile=patchProfile(state.profile,input);set(key()+'-profile',profile);state.profile=profile;}
+
 export function navigate(tab){state.tab=tab;state.modal=null;
  // #ifdef H5
  const route=`#/pages/index/index?tab=${tab}`;if(location.hash!==route)history.replaceState(null,'',route);window.scrollTo(0,0);
@@ -59,7 +61,7 @@ export async function signout(){if(state.user)await api('/api/auth/logout',{});s
  sessionStorage.removeItem('kejian-guest');
  // #endif
  load();}
-export const canDemo=computed(()=>!state.loadError&&!state.data.students.length&&!state.data.lessons.length&&!Object.keys(state.data.salaryMonths||{}).length&&!(state.data.commissions||[]).length);
+export const canDemo=computed(()=>!state.loadError&&!state.data.students.length&&!state.data.lessons.length&&!(state.data.dutyRecords||[]).length&&!Object.keys(state.data.dutyPlans||{}).length&&!Object.keys(state.data.salaryMonths||{}).length&&!(state.data.commissions||[]).length);
 export function seedDemo(){if(!canDemo.value)throw Error('仅空数据可加载示例');mutate(d=>{const a=saveStudent(d,{name:'林小满',subject:'数学',rate:'180',billingMinutes:90,selfRecruited:true}),b=saveStudent(d,{name:'陈一诺',subject:'英语',rate:'160',billingMinutes:90}),c=saveStudent(d,{name:'周知夏',subject:'钢琴',rate:'220',billingMinutes:90,selfRecruited:true});for(const[s,start,end]of[[a,'09:00','10:30'],[b,'14:00','15:30'],[c,'17:00','18:30']])scheduleLessons(d,{studentId:s.id,date:dateKey(),start,end,rate:s.rateCents/100,billingMinutes:90,subject:s.subject});for(let i=1;i<=5;i++){const l=scheduleLessons(d,{studentId:i%2?a.id:b.id,date:addDays(dateKey(),-i),start:'10:00',end:'11:30',rate:'180',billingMinutes:90,subject:'个别辅导'})[0];transition(d,l.id,'complete');if(i>2)transition(d,l.id,'paid');}saveSalarySettings(d,dateKey().slice(0,7),{base:'2000',eveningRate:'50',eveningCount:8});addCommission(d,{studentId:a.id,date:dateKey(),amount:'3000',percent:'10'});});notify('示例数据已加入');}
 export function download(filename,content,type='application/json'){
  // #ifdef H5

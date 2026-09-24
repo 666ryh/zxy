@@ -3,7 +3,7 @@
     "private":  true,
     "type":  "module",
     "scripts":  {
-                    "test":  "node --test tests/domain.test.js tests/v2.test.js tests/auth.test.js tests/storage.test.js tests/store.test.js",
+                    "test":  "node --test tests/domain.test.js tests/v2.test.js tests/auth.test.js tests/storage.test.js tests/store.test.js tests/attendance.test.js tests/profile.test.js",
                     "preview":  "node tools/dev.mjs",
                     "dev:h5":  "uni",
                     "build:h5":  "uni build"

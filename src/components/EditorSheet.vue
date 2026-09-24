@@ -5,7 +5,7 @@ import {state,CHARACTER,mutate,notify,confirmAction,saveProfile,seedDemo,canDemo
 import {dateKey,money,amount,minutes,saveStudent,scheduleLessons,updateLesson,transition} from '../domain/domain.js';
 import {salarySummary,saveSalarySettings,addCommission} from '../domain/salary.js';
 import AppIcon from './AppIcon.vue';
-const form=reactive({}),error=ref(''),active=computed(()=>state.modal),type=computed(()=>active.value?.type),lesson=computed(()=>state.data.lessons.find(l=>l.id===active.value?.id)),student=computed(()=>state.data.students.find(s=>s.id===active.value?.id));
+const form=reactive({}),error=ref(''),active=computed(()=>['duty-plan','duty-repair','duty-leave','duty-detail','course-attendance','course-repair','course-leave'].includes(state.modal?.type)?null:state.modal),type=computed(()=>active.value?.type),lesson=computed(()=>state.data.lessons.find(l=>l.id===active.value?.id)),student=computed(()=>state.data.students.find(s=>s.id===active.value?.id));
 const available=computed(()=>state.data.students.filter(s=>!s.archived));
 const recruited=computed(()=>state.data.students.filter(s=>s.selfRecruited));
 const title=computed(()=>({profile:'编辑个人资料',salary:state.month+' 薪资设置',commission:'记录招生缴费',student:active.value?.id?'编辑学生':'添加学生',lesson:active.value?.id?'修改课程':'安排新课程','student-detail':student.value?.name||'学生资料','lesson-detail':lesson.value?studentName(lesson.value.studentId)+'的课程':'课程详情',backup:'数据与备份',support:'人工客服 · 辉辉',about:'关于课笺',account:'账号与登录','export-salary':'导出工资账单'})[type.value]||'' );
