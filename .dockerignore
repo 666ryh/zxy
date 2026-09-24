@@ -1,0 +1,11 @@
+node_modules
+.git
+.env*
+server/.env*
+server/data
+work
+build
+dist
+releases
+android
+outputs

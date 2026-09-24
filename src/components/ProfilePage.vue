@@ -1,5 +1,6 @@
 <script setup>
 import CharacterImage from './CharacterImage.vue';
+import {cloud} from '../cloud.js';
 import {appearance} from '../appearance.js';
 import {ref,computed} from 'vue';
 import {state,CHARACTER,navigate,studentName,statusLabels} from '../store.js';
@@ -10,8 +11,8 @@ const section=ref('home');
 const stats=computed(()=>summary(state.data,dateKey().slice(0,7)));
 const salary=computed(()=>salarySummary(state.data,dateKey().slice(0,7)));
 const recent=computed(()=>[...state.data.lessons].filter(l=>l.status==='completed').sort((a,b)=>b.date.localeCompare(a.date)).slice(0,8));
-const services=[['appearance','settings','页面背景','每页图片、透明度与文字颜色'],['salary','payroll','薪资设置','底薪、晚辅与招生提成'],['attendance','attendance','我的考勤','记录每一次认真'],['backup','download','数据与备份','给教学手账留一份副本'],['support','chat','联系辉辉','自动回复 · 趣味聊天'],['about','star','关于课笺','我的紫色教学手账']];
-function open(action){if(action==='appearance'){appearance.open=true;return;}if(action==='support'){state.supportOpen=true;return;}if(action==='attendance')navigate('attendance');else{if(action==='salary')state.month=dateKey().slice(0,7);state.modal={type:action};}}
+const services=[['sync','download','同步与恢复','自动同步、冲突处理、历史版本'],['appearance','settings','页面背景','每页图片、透明度与文字颜色'],['salary','payroll','薪资设置','底薪、晚辅与招生提成'],['attendance','attendance','我的考勤','记录每一次认真'],['backup','download','数据与备份','给教学手账留一份副本'],['support','chat','联系辉辉','自动回复 · 趣味聊天'],['about','star','关于课笺','我的紫色教学手账']];
+function open(action){if(action==='sync'){cloud.open=true;return;}if(action==='appearance'){appearance.open=true;return;}if(action==='support'){state.supportOpen=true;return;}if(action==='attendance')navigate('attendance');else{if(action==='salary')state.month=dateKey().slice(0,7);state.modal={type:action};}}
 </script>
 <template>
  <view class="profile-page">
@@ -30,6 +31,7 @@ function open(action){if(action==='appearance'){appearance.open=true;return;}if(
     <text class="profile-bio">{{state.profile.bio||'这里，装着我的教学与生活。'}}</text>
     <view class="profile-stats"><button role="button" tabindex="0" @click="navigate('students')"><text class="stat-value">{{state.data.students.filter(s=>!s.archived).length}}</text><text>我的学生</text></button><button role="button" tabindex="0" @click="navigate('schedule')"><text class="stat-value">{{stats.completed}}</text><text>本月授课</text></button><button role="button" tabindex="0" @click="navigate('attendance')"><text class="stat-value">{{stats.days}}</text><text>出勤天数</text></button></view>
    </view>
+   <button role="button" tabindex="0" class="sync-status-entry" @click="cloud.open=true"><text>{{cloud.environment==='local'?'本机同步测试':'云端同步'}}</text><text>{{({signedOut:'登录后开启',pending:'等待同步',syncing:'正在同步',synced:'已同步',conflict:'有冲突，点击处理',error:'同步失败，点击查看',unauthorized:'需重新登录',localConflict:'需刷新页面'})[cloud.status]}}</text></button>
    <view class="profile-tabs"><button role="button" tabindex="0" v-for="[key,label] in [['home','主页'],['records','授课记录'],['services','常用服务']]" :key="key" :class="{selected:section===key}" @click="section=key">{{label}}<view v-if="section===key" class="tab-underline" /></button></view>
    <view v-if="section==='home'" class="profile-section">
     <view class="section-head"><text class="section-name">我的教学收藏夹</text><text class="subtle">把日常，整理成喜欢的样子</text></view>

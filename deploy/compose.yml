@@ -1,0 +1,56 @@
+services:
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: kejian
+      MYSQL_USER: kejian_app
+      MYSQL_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD}
+    command: ["--max-allowed-packet=32M"]
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "--silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+  app:
+    build: ..
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      TZ: Asia/Shanghai
+      TRUST_PROXY: "true"
+      PUBLIC_ORIGIN: https://${DOMAIN:?Set DOMAIN}
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: kejian
+      DB_USER: kejian_app
+      DB_PASSWORD: ${DB_PASSWORD}
+      SMTP_HOST: smtp.qq.com
+      SMTP_PORT: 465
+      SMTP_USER: ${SMTP_USER:?Set SMTP_USER}
+      SMTP_PASS: ${SMTP_PASS:?Set SMTP_PASS}
+      AUTH_DEV_MODE: "false"
+    volumes:
+      - app_data:/app/server/data
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN}
+    depends_on: [app]
+    ports: ["80:80", "443:443"]
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+volumes:
+  mysql_data:
+  app_data:
+  caddy_data:
+  caddy_config:
