@@ -1,1 +1,12 @@
-{"name":"kejian-teacher","private":true,"type":"module","scripts":{"test":"node --test tests/domain.test.js","preview":"node tools/serve.js"}}
+{
+    "name": "kejian-teacher",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "test": "node --test tests/domain.test.js tests/v2.test.js tests/auth.test.js",
+        "preview": "node tools/serve.js"
+    },
+    "dependencies": {
+        "nodemailer": "^9.1.1"
+    }
+}

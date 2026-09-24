@@ -3,3 +3,6 @@ build/
 *.keystore
 local.properties
 .gradle/
+node_modules/
+.env
+.env.local
