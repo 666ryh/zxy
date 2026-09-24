@@ -6,6 +6,10 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.AtomicFile;
+import android.util.Log;
+import android.widget.TextView;
+import android.widget.LinearLayout;
+import android.widget.Button;
 import android.webkit.*;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
@@ -17,7 +21,7 @@ public class MainActivity extends Activity {
     private AtomicFile database;
     private String pendingExport;
     private ValueCallback<Uri[]> fileCallback;
-    private static final String ORIGIN = "https://app.kejian.local/";
+    private static final String ORIGIN = AssetRoutes.ORIGIN;
     private static final int EXPORT = 101, IMPORT = 102, PICK_FILE = 103, MAX_SIZE = 5_000_000;
 
     @Override public void onCreate(Bundle saved) {
@@ -33,24 +37,16 @@ public class MainActivity extends Activity {
         settings.setTextZoom(Math.round(getResources().getConfiguration().fontScale * 100));
         web.addJavascriptInterface(new LocalBridge(), "Native");
         web.setWebViewClient(new WebViewClient() {
+            @Override public boolean shouldOverrideUrlLoading(WebView view,String url) {return !isLocal(url);}
             @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-                return !request.getUrl().toString().startsWith(ORIGIN);
+                return !isLocal(request.getUrl().toString());
             }
             @Override public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
-                String url = request.getUrl().toString();
-                try {
-                    if (!url.startsWith(ORIGIN)) throw new IOException("External request blocked");
-                    String path = request.getUrl().getPath();
-                    if (path == null || path.equals("/")) path = "/index.html";
-                    if (path.equals("/api/session")) return new WebResourceResponse("application/json","UTF-8",new ByteArrayInputStream("{\"user\":null,\"mode\":\"offline\"}".getBytes(StandardCharsets.UTF_8)));
-                    if (path.startsWith("/api/")) return new WebResourceResponse("application/json","UTF-8",503,"Offline",null,new ByteArrayInputStream("{\"error\":\"Offline package has no email service\"}".getBytes(StandardCharsets.UTF_8)));
-                    if (!path.matches("/[a-zA-Z0-9._/-]+") || path.contains("..") || path.contains("//")) throw new IOException("Invalid asset");
-                    String mime = path.endsWith(".js") ? "text/javascript" : path.endsWith(".css") ? "text/css" : path.endsWith(".svg") ? "image/svg+xml" : path.endsWith(".png") ? "image/png" : path.endsWith(".jpg") || path.endsWith(".jpeg") ? "image/jpeg" : path.endsWith(".webp") ? "image/webp" : path.endsWith(".woff2") ? "font/woff2" : path.endsWith(".ttf") ? "font/ttf" : path.endsWith(".json") ? "application/json" : "text/html";
-                    return new WebResourceResponse(mime,mime.startsWith("text/") || mime.equals("application/json") ? "UTF-8" : null,getAssets().open("web"+path));
-                } catch (IOException e) {
-                    return new WebResourceResponse("text/plain","UTF-8",404,"Not found",null,new ByteArrayInputStream(new byte[0]));
-                }
+                return localResponse(request.getUrl().toString());
             }
+            @Override public WebResourceResponse shouldInterceptRequest(WebView view,String url){return localResponse(url);}
+            @Override public void onReceivedHttpError(WebView view,WebResourceRequest request,WebResourceResponse response){if(request.isForMainFrame())showStartupError("HTTP "+response.getStatusCode());}
+            @Override public void onReceivedError(WebView view,WebResourceRequest request,WebResourceError error){if(request.isForMainFrame())showStartupError("WebView "+error.getErrorCode());}
         });
         web.setWebChromeClient(new WebChromeClient(){
             @Override public boolean onShowFileChooser(WebView view,ValueCallback<Uri[]> callback,FileChooserParams params){
@@ -72,8 +68,31 @@ public class MainActivity extends Activity {
             }
         });
         setContentView(web);
-        web.loadUrl(ORIGIN);
+        loadHome();
     }
+
+    private boolean isLocal(String url){try{AssetRoutes.assetPath(url);return true;}catch(IOException e){return false;}}
+    private WebResourceResponse localResponse(String url){
+        try{
+            String path=AssetRoutes.assetPath(url);
+            if(path.equals("web/api/session"))return new WebResourceResponse("application/json","UTF-8",new ByteArrayInputStream("{\"user\":null,\"mode\":\"offline\"}".getBytes(StandardCharsets.UTF_8)));
+            if(path.startsWith("web/api/"))return new WebResourceResponse("application/json","UTF-8",503,"Offline",null,new ByteArrayInputStream("{\"error\":\"Offline package has no email service\"}".getBytes(StandardCharsets.UTF_8)));
+            String mime=AssetRoutes.mime(path);
+            return new WebResourceResponse(mime,mime.startsWith("image/")||mime.startsWith("font/")?null:"UTF-8",200,"OK",java.util.Collections.singletonMap("Cache-Control","no-store"),getAssets().open(path));
+        }catch(IOException e){Log.e("KejianAssets","Local asset request failed: "+url,e);return new WebResourceResponse("text/plain","UTF-8",404,"Not found",null,new ByteArrayInputStream(new byte[0]));}
+    }
+    private void loadHome(){
+        try{
+            // Read the entry directly; retain the existing HTTPS origin for modules and stored data.
+            String html=readLimited(getAssets().open("web/index.html"));
+            web.loadDataWithBaseURL(ORIGIN,html,"text/html","UTF-8",ORIGIN);
+        }catch(IOException e){Log.e("KejianAssets","Unable to read bundled home",e);showStartupError("内置首页读取失败");}
+    }
+    private void showStartupError(String detail){runOnUiThread(()->{
+        LinearLayout panel=new LinearLayout(this);panel.setOrientation(LinearLayout.VERTICAL);panel.setPadding(48,80,48,48);
+        TextView message=new TextView(this);message.setText("课笺启动失败\n"+detail+"\n请保留应用数据，尝试重新打开或更新安装包。");message.setTextSize(18);panel.addView(message);
+        Button retry=new Button(this);retry.setText("重新加载");retry.setOnClickListener(v->{setContentView(web);loadHome();});panel.addView(retry);setContentView(panel);
+    });}
 
     private String readLimited(InputStream stream) throws IOException {
         try(InputStream in=stream;ByteArrayOutputStream out=new ByteArrayOutputStream()){
