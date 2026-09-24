@@ -78,6 +78,6 @@ export function importBackup(){
  const input=document.createElement('input');input.type='file';input.accept='.json,application/json';input.onchange=async()=>{try{const file=input.files[0];if(!file)return;if(file.size>5000000)throw Error('文件超过5MB');const d=parseBackup(await file.text());if(!await confirmAction(`恢复${d.students.length}位学生、${d.lessons.length}节课程并替换当前数据？`))return;writeSaved(set,key(),d);state.data=d;state.loadError='';state.modal=null;notify('备份已恢复');}catch(e){notify(e.message);}};input.click();
  // #endif
 }
-export function copyWechat(){uni.setClipboardData({data:'15048452629',success:()=>notify('已复制，到微信添加朋友'),fail:()=>notify('请手动复制：15048452629')});}
+
 export function studentName(id){return state.data.students.find(s=>s.id===id)?.name||'学生';}
 export const statusLabels={scheduled:'待上课',teaching:'上课中',completed:'已完成',cancelled:'已取消',leave:'已请假'};

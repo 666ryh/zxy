@@ -10,7 +10,7 @@ const section=ref('home');
 const stats=computed(()=>summary(state.data,dateKey().slice(0,7)));
 const salary=computed(()=>salarySummary(state.data,dateKey().slice(0,7)));
 const recent=computed(()=>[...state.data.lessons].filter(l=>l.status==='completed').sort((a,b)=>b.date.localeCompare(a.date)).slice(0,8));
-const services=[['appearance','settings','页面背景','每页图片、透明度与文字颜色'],['salary','payroll','薪资设置','底薪、晚辅与招生提成'],['attendance','attendance','我的考勤','记录每一次认真'],['backup','download','数据与备份','给教学手账留一份副本'],['support','chat','联系辉辉','打开 QQ 聊天'],['about','star','关于课笺','我的紫色教学手账']];
+const services=[['appearance','settings','页面背景','每页图片、透明度与文字颜色'],['salary','payroll','薪资设置','底薪、晚辅与招生提成'],['attendance','attendance','我的考勤','记录每一次认真'],['backup','download','数据与备份','给教学手账留一份副本'],['support','chat','联系辉辉','自动回复 · 趣味聊天'],['about','star','关于课笺','我的紫色教学手账']];
 function open(action){if(action==='appearance'){appearance.open=true;return;}if(action==='support'){state.supportOpen=true;return;}if(action==='attendance')navigate('attendance');else{if(action==='salary')state.month=dateKey().slice(0,7);state.modal={type:action};}}
 </script>
 <template>
@@ -41,7 +41,7 @@ function open(action){if(action==='appearance'){appearance.open=true;return;}if(
    </view>
    <view v-else-if="section==='records'" class="profile-section"><view class="section-head"><text class="section-name">认真上过的每一节课</text><text class="subtle">最近8条</text></view><view v-if="!recent.length" class="empty-state"><text>还没有已完成的授课记录</text><button role="button" tabindex="0" class="primary" @click="navigate('schedule')">去课表看看</button></view><button role="button" tabindex="0" v-for="l in recent" :key="l.id" class="footprint" @click="state.modal={type:'lesson-detail',id:l.id}"><view class="footprint-date"><text>{{Number(l.date.slice(8))}}</text><text>{{Number(l.date.slice(5,7))}}月</text></view><view class="footprint-main"><text>{{studentName(l.studentId)}} · {{l.subject||'辅导'}}</text><text>{{l.start}}—{{l.end}} · {{statusLabels[l.status]}}</text></view><AppIcon name="arrow" :size="16"/></button></view>
    <view v-else class="profile-section"><view class="section-head"><text class="section-name">让教学更轻松一点</text></view><view class="service-list"><button role="button" tabindex="0" v-for="[action,icon,title,desc] in services" :key="action" class="service-row" @click="open(action)"><view class="service-icon"><AppIcon :name="icon"/></view><view class="service-copy"><text>{{title}}</text><text>{{desc}}</text></view><AppIcon name="arrow" :size="16"/></button></view><button role="button" tabindex="0" class="secondary full" @click="state.modal={type:'account'}">{{state.user?'账号与退出登录':'邮箱登录 / 注册'}}</button></view>
-   <button role="button" tabindex="0" class="huihui-card" @click="state.supportOpen=true"><view class="huihui-avatar">辉</view><view><text class="huihui-title">有问题，就来找辉辉</text><text class="huihui-sub">QQ 聊天 · 人工接待</text></view><AppIcon name="arrow" :size="17"/></button>
+   <button role="button" tabindex="0" class="huihui-card" @click="state.supportOpen=true"><view class="huihui-avatar">辉</view><view><text class="huihui-title">有问题，就来找辉辉</text><text class="huihui-sub">自动回复 · 趣味聊天</text></view><AppIcon name="arrow" :size="17"/></button>
    <text class="page-signature">把热爱写进日常，把温柔留给自己。</text>
   </view>
  </view>
