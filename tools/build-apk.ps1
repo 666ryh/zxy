@@ -23,7 +23,7 @@ try {Run-Checked "$toolsRoot\aapt.exe" @('add',"$buildRoot\unsigned.apk",'classe
 Run-Checked "$toolsRoot\zipalign.exe" @('-f','4',"$buildRoot\unsigned.apk", "$buildRoot\aligned.apk")
 $keyPath = Join-Path $projectRoot 'work\kejian-local.keystore'
 if (!(Test-Path -LiteralPath $keyPath)) {Run-Checked "$javaRoot\bin\keytool.exe" @('-genkeypair','-keystore',$keyPath,'-storepass','android','-keypass','android','-alias','kejian','-keyalg','RSA','-keysize','2048','-validity','10000','-dname','CN=Kejian Local, O=Personal, C=CN')}
-$apk = Join-Path $projectRoot 'releases\kejian-3.0.1.apk'
+$apk = Join-Path $projectRoot 'releases\kejian-3.0.2.apk'
 Run-Checked "$toolsRoot\apksigner.bat" @('sign','--ks',$keyPath,'--ks-pass','pass:android','--key-pass','pass:android','--out',$apk,"$buildRoot\aligned.apk")
 Run-Checked "$toolsRoot\apksigner.bat" @('verify','--verbose',$apk)
 Run-Checked "$javaRoot\bin\javac.exe" @('-encoding','UTF-8','--release','8','-d',"$buildRoot\route-tests", "$sourceRoot\java\cn\kejian\teacher\AssetRoutes.java", "$projectRoot\tests\AssetRoutesTest.java")

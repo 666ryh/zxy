@@ -45,8 +45,10 @@ public class MainActivity extends Activity {
                 return localResponse(request.getUrl().toString());
             }
             @Override public WebResourceResponse shouldInterceptRequest(WebView view,String url){return localResponse(url);}
-            @Override public void onReceivedHttpError(WebView view,WebResourceRequest request,WebResourceResponse response){if(request.isForMainFrame())showStartupError("HTTP "+response.getStatusCode());}
-            @Override public void onReceivedError(WebView view,WebResourceRequest request,WebResourceError error){if(request.isForMainFrame())showStartupError("WebView "+error.getErrorCode());}
+            // Asset requests can report HTTP errors independently. Do not replace the whole page
+            // for a non-main resource; the bundled entry page remains usable offline.
+            @Override public void onReceivedHttpError(WebView view,WebResourceRequest request,WebResourceResponse response){Log.w("KejianAssets","Bundled resource HTTP "+response.getStatusCode()+": "+request.getUrl());}
+            @Override public void onReceivedError(WebView view,WebResourceRequest request,WebResourceError error){if(request.isForMainFrame())showStartupError("WebView "+error.getErrorCode());else Log.w("KejianAssets","Bundled resource error: "+request.getUrl());}
         });
         web.setWebChromeClient(new WebChromeClient(){
             @Override public boolean onShowFileChooser(WebView view,ValueCallback<Uri[]> callback,FileChooserParams params){
