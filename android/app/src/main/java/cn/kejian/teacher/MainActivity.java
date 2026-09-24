@@ -22,7 +22,6 @@ public class MainActivity extends Activity {
     private String pendingExport;
     private ValueCallback<Uri[]> fileCallback;
     private static final String ORIGIN = AssetRoutes.ORIGIN;
-    private static final String LOCAL_HOME = "file:///android_asset/web/index.html";
     private static final int EXPORT = 101, IMPORT = 102, PICK_FILE = 103, MAX_SIZE = 5_000_000;
 
     @Override public void onCreate(Bundle saved) {
@@ -88,7 +87,9 @@ public class MainActivity extends Activity {
         try{
             // Read the entry directly; retain the existing HTTPS origin for modules and stored data.
             String html=readLimited(getAssets().open("web/index.html"));
-            web.loadUrl(LOCAL_HOME);
+            // Use a controlled HTTPS origin so HarmonyOS WebView permits ES modules.
+            // Requests are intercepted below and never reach the network.
+            web.loadUrl(ORIGIN);
         }catch(IOException e){Log.e("KejianAssets","Unable to read bundled home",e);showStartupError("内置首页读取失败");}
     }
     private void showStartupError(String detail){runOnUiThread(()->{
