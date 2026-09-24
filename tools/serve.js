@@ -1,4 +1,5 @@
-﻿import http from 'node:http';
+import {supportConfig} from '../server/support.js';
+import http from 'node:http';
 import {readFile} from 'node:fs/promises';
 import path from 'node:path';
 import nodemailer from 'nodemailer';
@@ -18,6 +19,7 @@ http.createServer(async(req,res)=>{
   if(url.pathname.startsWith('/api/')){
    if(req.headers.origin&&req.headers.origin!==`http://${host}`){respond(403,{error:'请求来源无效'});return;}
    const token=(req.headers.cookie||'').split(';').map(x=>x.trim()).find(x=>x.startsWith('kejian_session='))?.slice(15);
+   if(req.method==='GET'&&url.pathname==='/api/support/config'){respond(200,supportConfig());return;}
    if(req.method==='GET'&&url.pathname==='/api/session'){respond(200,{user:auth.session(token),mode:smtp?'email':'development'});return;}
    if(req.method!=='POST'){respond(405,{error:'请求方式不支持'});return;}
    if(!req.headers['content-type']?.startsWith('application/json')){respond(400,{error:'请求格式无效'});return;}

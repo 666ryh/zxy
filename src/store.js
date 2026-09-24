@@ -1,10 +1,11 @@
+import {loadAppearance} from './appearance.js';
 import {normalizeProfile,patchProfile} from './domain/profile.js';
 import {reactive,computed} from 'vue';
 import {emptyData,dateKey,addDays,saveStudent,scheduleLessons,transition,parseBackup} from './domain/domain.js';
 import {saveSalarySettings,addCommission} from './domain/salary.js';
 import {readSaved,writeSaved} from './storage.js';
 export const CHARACTER='/static/characters/kuromi-official.png';
-export const state=reactive({ready:false,user:null,guest:false,mode:'development',data:emptyData(),profile:normalizeProfile(),loadError:'',tab:'profile',selected:dateKey(),profileEditing:false,month:dateKey().slice(0,7),modal:null});
+export const state=reactive({ready:false,user:null,guest:false,mode:'development',data:emptyData(),profile:normalizeProfile(),loadError:'',tab:'profile',selected:dateKey(),profileEditing:false,supportOpen:false,month:dateKey().slice(0,7),modal:null});
 export const key=()=>state.user?`kejian-account-${state.user.email}`:'kejian-data';
 function get(k){let result;
  // #ifdef H5
@@ -39,7 +40,7 @@ export function navigate(tab){state.tab=tab;state.modal=null;
  const route=`#/pages/index/index?tab=${tab}`;if(location.hash!==route)history.replaceState(null,'',route);window.scrollTo(0,0);
  // #endif
 }
-export async function init(){try{const r=await api('/api/session');state.user=r.user;state.mode=r.mode;}catch{state.mode='unavailable';}
+export async function init(){loadAppearance();try{const r=await api('/api/session');state.user=r.user;state.mode=r.mode;}catch{state.mode='unavailable';}
  // #ifdef H5
  state.guest=sessionStorage.getItem('kejian-guest')==='true';
  const hash=location.hash;const tab=new URLSearchParams(hash.split('?')[1]||'').get('tab')||hash.slice(1);if(['schedule','students','payroll','attendance','profile'].includes(tab))state.tab=tab;

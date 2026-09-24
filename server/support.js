@@ -1,0 +1,1 @@
+export function supportConfig(value=process.env.SUPPORT_QQ??'2546619708'){const qq=String(value).trim();if(!/^[1-9]\d{4,11}$/.test(qq))return {configured:false,name:'辉辉',qq:'',url:''};return {configured:true,name:'辉辉',qq,url:`https://wpa.qq.com/msgrd?v=3&uin=${qq}&site=qq&menu=yes`};}

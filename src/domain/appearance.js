@@ -1,0 +1,4 @@
+export const PAGE_KEYS=['schedule','students','payroll','attendance','profile','details','login'];
+export const DEFAULT_APPEARANCE={image:'',opacity:12,shade:12,tone:'light',fit:'contain',position:50};
+export function resolveAppearance(all,key){return {...DEFAULT_APPEARANCE,...all?.[key]};}
+export function updateAppearance(all,page,patch){if(page!=='all'&&!PAGE_KEYS.includes(page))throw Error('页面无效');const next=JSON.parse(JSON.stringify(all||{}));for(const key of page==='all'?PAGE_KEYS:[page]){const p={...resolveAppearance(all,key),...patch};if(typeof p.image!=='string'||(p.image&&(!/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(p.image)||p.image.length>650000)))throw Error('请选择有效背景图片');for(const k of ['opacity','shade','position'])if(!Number.isFinite(p[k])||p[k]<0||p[k]>100)throw Error('透明度或位置超出范围');if(!['light','dark'].includes(p.tone)||!['contain','cover'].includes(p.fit))throw Error('显示选项无效');next[key]=p;}return next;}
