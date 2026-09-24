@@ -12,6 +12,7 @@ public final class AssetRoutesTest {
     private static void require(boolean value,String message){if(!value)throw new AssertionError(message);}
     public static void main(String[] args) throws Exception {
         require("web/index.html".equals(AssetRoutes.assetPath(AssetRoutes.ORIGIN)),"root page");
+        require("web/index.html".equals(AssetRoutes.assetPath("file:///android_asset/web/index.html")),"android asset root");
         require("web/index.html".equals(AssetRoutes.assetPath("https://app.kejian.local")),"empty path root");
         require("web/assets/page.js".equals(AssetRoutes.assetPath(AssetRoutes.ORIGIN+"assets/page.js?v=1")),"query path");
         for(String url:new String[]{"https://evil.example/index.html","https://app.kejian.local.evil/index.html",AssetRoutes.ORIGIN+"%2e%2e/private",AssetRoutes.ORIGIN+"a//b",AssetRoutes.ORIGIN+"a%5cb", "https://app.kejian.local:444/index.html"}){
@@ -23,8 +24,8 @@ public final class AssetRoutesTest {
         try(JarFile apk=new JarFile(args[0])){
             String home=new String(read(apk,"assets/"+AssetRoutes.assetPath(AssetRoutes.ORIGIN)),StandardCharsets.UTF_8);
             require(home.contains("type=\"module\""),"H5 module entry");
-            Matcher refs=Pattern.compile("(?:src|href)=\"(/[^\"]+)\"").matcher(home);int count=0;
-            while(refs.find()){String resolved=URI.create(AssetRoutes.ORIGIN).resolve(refs.group(1)).toString();require(read(apk,"assets/"+AssetRoutes.assetPath(resolved)).length>0,"entry asset missing");count++;}
+            Matcher refs=Pattern.compile("(?:src|href)=\"([^\"]+)\"").matcher(home);int count=0;
+            while(refs.find()){String ref=refs.group(1);if(ref.startsWith("data:")||ref.startsWith("http"))continue;String resolved=URI.create("file:///android_asset/web/index.html").resolve(ref).toString();require(read(apk,"assets/"+AssetRoutes.assetPath(resolved)).length>0,"entry asset missing: "+ref);count++;}
             require(count>=3,"Expected JS and CSS resources");
             Enumeration<JarEntry> entries=apk.entries();int assets=0;
             while(entries.hasMoreElements()){String name=entries.nextElement().getName();if(!name.startsWith("assets/web/")||name.endsWith("/"))continue;String url=AssetRoutes.ORIGIN+name.substring("assets/web/".length());require(("assets/"+AssetRoutes.assetPath(url)).equals(name),"resource route mismatch");require(read(apk,name).length>0,"empty resource");assets++;}

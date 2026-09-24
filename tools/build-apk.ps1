@@ -10,6 +10,7 @@ function Run-Checked([string]$exe,[string[]]$arguments) { & $exe @arguments; if 
 if (!(Test-Path -LiteralPath $platformJar)) {throw 'SDK missing: see README.md'}
 Push-Location $projectRoot
 try {Run-Checked 'npm.cmd' @('run','build:h5')} finally {Pop-Location}
+Run-Checked 'py.exe' @('-3.11',"$projectRoot\tools\prepare-h5-apk.py", "$projectRoot\dist\build\h5")
 New-Item -ItemType Directory -Force -Path "$buildRoot\compiled", "$buildRoot\classes", "$buildRoot\dex", "$buildRoot\assets\web", "$projectRoot\releases" | Out-Null
 Copy-Item -Path "$projectRoot\dist\build\h5\*" -Destination "$buildRoot\assets\web" -Recurse -Force
 Run-Checked "$toolsRoot\aapt2.exe" @('compile','--dir',"$sourceRoot\res",'-o',"$buildRoot\compiled\resources.zip")

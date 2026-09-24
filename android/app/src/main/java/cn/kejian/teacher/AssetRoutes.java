@@ -7,6 +7,13 @@ final class AssetRoutes {
     static String assetPath(String url) throws IOException {
         try {
             URI uri=URI.create(url);
+            if("file".equalsIgnoreCase(uri.getScheme())){
+                String filePath=uri.getPath();
+                if(filePath==null||!filePath.startsWith("/android_asset/"))throw new IOException("External file blocked");
+                String asset=filePath.substring("/android_asset/".length());
+                if(!asset.matches("[a-zA-Z0-9._/-]+")||asset.contains("..")||asset.contains("//"))throw new IOException("Invalid asset path");
+                return asset;
+            }
             if(!"https".equalsIgnoreCase(uri.getScheme())||!"app.kejian.local".equalsIgnoreCase(uri.getHost())||uri.getUserInfo()!=null||(uri.getPort()!=-1&&uri.getPort()!=443))throw new IOException("External URL blocked");
             String path=uri.getPath();
             if(path==null||path.isEmpty()||path.equals("/"))path="/index.html";
