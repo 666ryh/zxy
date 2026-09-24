@@ -5,6 +5,8 @@ import android.app.AlertDialog;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Build;
+import android.provider.MediaStore;
 import android.util.AtomicFile;
 import android.util.Log;
 import android.widget.TextView;
@@ -54,11 +56,15 @@ public class MainActivity extends Activity {
             @Override public boolean onShowFileChooser(WebView view,ValueCallback<Uri[]> callback,FileChooserParams params){
                 if(fileCallback!=null)fileCallback.onReceiveValue(null);
                 fileCallback=callback;
-                Intent intent=new Intent(Intent.ACTION_OPEN_DOCUMENT);
-                intent.addCategory(Intent.CATEGORY_OPENABLE);
                 String[] accepts=params.getAcceptTypes();
                 boolean images=accepts!=null&&accepts.length>0&&accepts[0].startsWith("image/");
-                intent.setType(images?"image/*":"*/*");
+                Intent intent;
+                if(images){
+                    intent=new Intent(Build.VERSION.SDK_INT>=33?MediaStore.ACTION_PICK_IMAGES:Intent.ACTION_PICK);
+                    intent.setType("image/*");
+                    if(intent.resolveActivity(getPackageManager())==null){intent=new Intent(Intent.ACTION_PICK,MediaStore.Images.Media.EXTERNAL_CONTENT_URI);intent.setType("image/*");}
+                    if(intent.resolveActivity(getPackageManager())==null){intent=new Intent(Intent.ACTION_GET_CONTENT);intent.addCategory(Intent.CATEGORY_OPENABLE);intent.setType("image/*");}
+                }else{intent=new Intent(Intent.ACTION_OPEN_DOCUMENT);intent.addCategory(Intent.CATEGORY_OPENABLE);intent.setType("*/*");}
                 try{startActivityForResult(intent,PICK_FILE);}catch(Exception e){fileCallback.onReceiveValue(null);fileCallback=null;feedback("无法打开文件选择器");}
                 return true;
             }
