@@ -3,11 +3,12 @@
     "private":  true,
     "type":  "module",
     "scripts":  {
-                    "test":  "node --test tests/domain.test.js tests/v2.test.js tests/auth.test.js tests/storage.test.js tests/store.test.js tests/attendance.test.js tests/profile.test.js tests/appearance.test.js tests/huihui.test.js tests/native.test.js tests/album.test.js",
+                    "test":  "node --test tests/domain.test.js tests/v2.test.js tests/auth.test.js tests/storage.test.js tests/store.test.js tests/attendance.test.js tests/profile.test.js tests/appearance.test.js tests/huihui.test.js tests/native.test.js tests/album.test.js tests/accounts.test.js tests/mail-config.test.js",
                     "preview":  "node tools/dev.mjs",
                     "dev:h5":  "uni",
                     "build:h5":  "uni build",
-                    "build:apk":  "powershell -NoProfile -ExecutionPolicy Bypass -File tools/build-apk.ps1"
+                    "build:apk":  "powershell -NoProfile -ExecutionPolicy Bypass -File tools/build-apk.ps1",
+                    "check:mail":  "node tools/check-mail.mjs"
                 },
     "dependencies":  {
                          "@dcloudio/uni-app":  "3.0.0-5020620260917001",

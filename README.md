@@ -1,3 +1,5 @@
+> 网页邮箱登录已接入真实QQ SMTP：后端读取server/.env.local，首次验证码验证自动注册，账号与会话保存到server/data。详见docs/qq-email-login.md；教学数据暂不云同步。历史打包说明不代表本轮重新打包。
+
 > 新增安卓离线测试包：releases/kejian-3.0.0.apk，构建命令 npm run build:apk。详见 docs/android-3.0.md；它不是鸿蒙原生包，邮箱服务尚未部署。
 
 # 课笺 · UniApp + Vue3
