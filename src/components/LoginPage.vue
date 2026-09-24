@@ -1,0 +1,10 @@
+<script setup>
+import CharacterImage from './CharacterImage.vue';
+import {ref,onUnmounted} from 'vue';
+import {state,CHARACTER,api,login,enterGuest} from '../store.js';
+const email=ref(''),code=ref(''),error=ref(''),hint=ref(''),remaining=ref(0),busy=ref(false);let timer;
+async function request(){if(!/^\S+@[^\s@]+\.[^\s@]+$/.test(email.value)){error.value='请填写有效邮箱';return;}busy.value=true;error.value='';try{const r=await api('/api/auth/request',{email:email.value});hint.value=r.devCode?`开发验证码：${r.devCode}（未发送邮件，5分钟有效）`:'验证码已发送，请查收邮箱';remaining.value=60;clearInterval(timer);timer=setInterval(()=>{if(--remaining.value<=0)clearInterval(timer);},1000);}catch(e){error.value=e.message;}finally{busy.value=false;}}
+async function submit(){busy.value=true;error.value='';try{await login(email.value,code.value);}catch(e){error.value=e.message;}finally{busy.value=false;}}
+onUnmounted(()=>clearInterval(timer));
+</script>
+<template><view class="login-page"><CharacterImage  class="login-character" /><text class="login-title">欢迎回到你的<br/>紫色小世界</text><text class="subtle">把热爱排进课表，把每一份努力记下来。</text><view class="login-form"><text class="field-label">邮箱地址</text><input v-model="email" class="input" placeholder="请输入你的邮箱" :maxlength="254" aria-label="邮箱地址"/><text class="field-label">验证码</text><view class="code-row"><input v-model="code" class="input" type="number" :maxlength="6" placeholder="6位验证码" aria-label="验证码"/><button role="button" tabindex="0" class="secondary" :disabled="busy||remaining>0" @click="request">{{remaining?remaining+'秒后重发':'获取验证码'}}</button></view><text class="hint">{{hint||(state.mode==='development'?'本机预览：验证码将在页面显示，不发送邮件。':'验证码将发送到你的邮箱。')}}</text><text v-if="error" class="error" role="alert">{{error}}</text><button role="button" tabindex="0" class="primary full" :disabled="busy" @click="submit">登录 / 注册</button><button role="button" tabindex="0" class="text-action guest-entry" @click="enterGuest">先逛逛，体验页面</button></view><text class="page-signature">课笺 · 认真生活，可爱上课</text></view></template>

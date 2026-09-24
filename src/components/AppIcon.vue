@@ -1,0 +1,6 @@
+<script setup>
+import {computed} from 'vue';
+const props=defineProps({name:String,size:{default:22}});
+const paths={schedule:'M5 4h14v17H5zM8 2v4m8-4v4M5 9h14M9 13h1m4 0h1m-6 4h1m4 0h1',students:'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M16 3a4 4 0 0 1 0 8m6 10v-2a4 4 0 0 0-3-3.87M13 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0',payroll:'M4 5h16v15H4zM4 9h16m-7 4h4m-4 3h4M7 13h1m-1 3h1',attendance:'M20 11a8 8 0 1 1-5-7M9 10l3 3 9-9',profile:'M20 21v-2a6 6 0 0 0-6-6h-4a6 6 0 0 0-6 6v2M16 6a4 4 0 1 1-8 0 4 4 0 0 1 8 0',plus:'M12 5v14M5 12h14',arrow:'m9 5 7 7-7 7',left:'m15 5-7 7 7 7',download:'M12 3v12m-5-5 5 5 5-5M5 17v4h14v-4',settings:'M4 6h16M4 12h16M4 18h16M8 3v6m8 0v6m-6 0v6',chat:'M21 11a9 9 0 0 1-9 9H3l2-5a9 9 0 1 1 16-4ZM8 10h8m-8 4h5',edit:'m4 16 12-12 4 4-12 12H4zM13 7l4 4',star:'m12 2 3 7 7 1-5 5 1 7-6-4-6 4 1-7-5-5 7-1z',heart:'M20 5c-3-3-6-1-8 1-2-2-5-4-8-1-4 4 1 9 8 15 7-6 12-11 8-15Z',close:'m6 6 12 12M6 18 18 6'};
+const src=computed(()=>`data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#7952a5" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="${paths[props.name]||paths.star}"/></svg>`)}`);
+</script><template><image role="img" alt="" :src="src" :style="{width:size+'px',height:size+'px',flexShrink:0}" aria-hidden="true" /></template>

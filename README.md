@@ -1,67 +1,68 @@
-# 课笺
+﻿# 课笺 · UniApp + Vue3
 
-> 当前正在迭代紫色网页预览 v2，暂不打包。请阅读 docs/preview-v2.md。releases 中的 APK 属于旧版，以下旧版安装说明仅作保留。
+教师个人排课、学生管理、薪资与考勤手账。当前使用 **UniApp + Vue3 + Vite** 开发并验证 **H5**，以浏览器预览为准；不生成新的APK或HAP。
 
-
-教师个人使用的中文离线安卓应用：管理自己的学生、排课、计算课酬、记录自己的考勤。
-
-## 安装
-
-将 `releases/kejian-1.0.0.apk` 发送到安卓手机，点击安装。最低 Android 8.0（API 26），建议使用已更新 Android System WebView 的手机。应用无需网络、账号、定位、联系人或存储权限。安装包为本地签名的试用版本，不是应用商店发布版。
-
-首次打开为空白业务数据，可在右上角“备份与设置”加载示例。正式使用建议从空数据开始。
-
-## 日常使用
-
-1. “学生”添加姓名、科目和每小时课酬。
-2. “课表”选择日期并排课，支持每周重复 4/8/12 周；同一教师时间冲突会拒绝保存整批课程。
-3. 上课时点击“上课打卡”，结束后“下课打卡”；历史课程点详情中的“补录完成”。
-4. “薪资”查看当月已赚、已收和待收课酬，逐节标记收款，导出 CSV 账单。
-5. “考勤”查看自己完成授课的日期、迟到次数、请假记录和实际打卡时间。
-6. 定期从设置导出 JSON 备份；恢复备份需确认替换，文件格式不合法时拒绝导入。
-
-### 计薪与考勤口径
-
-- 课酬=约定课程分钟数×课程时薪÷60，逐节四舍五入到分；仅已完成课程计薪。
-- 时薪在排课时保存为快照；学生后续调价不改变已排课的价格。
-- 取消和教师请假不计薪；课酬不是税后工资，不包含底薪、税费或绩效。
-- 实际打卡晚于计划开始 5 分钟记迟到，但不自动扣薪。补录不判断迟到。
-- 课程状态恢复为待上课会清除该节考勤与收款标记；删除课程不可撤销。
-- 第一版为一对一、单教师本机管理，不含班课、云同步、提醒、跨日课程或机构审批。
-
-## 数据
-
-Android 数据在应用私有目录 `teacher.json`，以 AtomicFile 原子写入。浏览器预览使用其自身 localStorage，与手机数据独立。卸载、清除应用数据会移除记录，升级请保留签名密钥和应用数据。容量上限为 UTF-8 5MB、5000 学生、20000 课程，超过时拒绝保存。
-
-Android 备份由系统文件选择器写出；浏览器由下载功能保存。JSON 备份包含个人数据，请自行保管。
-
-## 项目与开发
-
-无 npm 运行依赖，Node 18+ 用于测试和本地预览，Java 17 + Android SDK 34 用于构建。Android 壳内置 HTML/CSS/ES modules；本地 HTTPS 虚拟域名的资源由 WebViewClient 从 assets 返回，不访问远程服务器。APK 未申请 INTERNET 权限。
+## 查看页面
 
 ```powershell
 cd F:\teacher
-npm test
+npm install
 npm run preview
-# 浏览器打开 http://127.0.0.1:4173
-
-# SDK 仅需首次准备，本机已准备完成
-powershell -NoProfile -ExecutionPolicy Bypass -File tools/setup-sdk.ps1
-powershell -NoProfile -ExecutionPolicy Bypass -File tools/build-apk.ps1
 ```
 
-构建脚本直接调用官方 aapt2、javac、d8、zipalign 和 apksigner，不依赖 Gradle 下载。若 Java 不在 `C:\Program Files\Java\jdk-17`，修改脚本 `$javaRoot`。SDK 下载遵循其官方许可。
+打开 http://127.0.0.1:4173/#/pages/index/index?tab=profile 。原来的 `#profile`、`#students` 等链接也会跳转。前端4173，Node邮箱验证服务4174，均只绑定本机。
 
-签名密钥位于 `work/kejian-local.keystore`（已排除 Git），本地试用密码 `android`。**保留此密钥才能覆盖升级此版本**；公开发布前使用独立妥善保护的发布密钥。
+初次进入可点“先逛逛，体验页面”。“我的→常用服务→数据与备份”可在空数据时加载示例。浏览器原有访客与邮箱数据沿用相同键，不自动清空或改变旧价格。
 
-### 文件
-- `web/domain.js`：金额、排课、状态与备份校验。
-- `web/app.js` / `styles.css`：四页界面及交互。
-- `android/app/src/main/`：离线安卓壳、文件桥和系统文件选择器。
-- `tests/domain.test.js`：可独立运行的行为测试。
-- `docs/design.md`：功能范围和 GitHub 项目调研。
-- `docs/verification.md`：实际验证记录与尚未验证的范围。
+## 技术与源码
 
-## 参考项目
+- `src/main.js`、`App.vue`、`pages.json`、`manifest.json`：标准UniApp Vue3工程入口。
+- `src/pages/index/index.vue`：应用页面、五项导航。
+- `src/components/ProfilePage.vue`：封面、头像、教学收藏夹、授课记录、常用服务。
+- `src/components/TeachingPages.vue`：课表、学生、薪资、考勤。
+- `src/components/EditorSheet.vue`：编辑与操作表单。
+- `src/store.js`、`storage.js`：Vue响应式状态、本机持久化、旧数据兼容、H5文件能力。
+- `src/domain/`：独立计薪和排课规则；`server/auth.js`：验证码验证。
+- `tools/dev.mjs`：一起启动H5与本地API；`tools/serve.js`：邮件API和H5构建产物静态服务。
 
-功能调研参考 [TutorZone](https://github.com/namtudev/tutor_zone)、[课薪通](https://github.com/KunLiam/Kexintong)、[StarClass](https://github.com/Hoodas101/starclass)。本项目独立实现，未复制这些仓库的业务代码。
+界面使用Vue组件与UniApp基础组件，并非在UniApp内嵌旧网页。H5文件下载、文件选择和Cookie登录有平台条件编译；鸿蒙原生能力需后续适配和真机验证，当前尚未承诺原生可用。
+
+## 检查与H5构建
+
+```powershell
+npm test
+npm run build:h5
+npm audit --registry=https://registry.npmjs.org
+```
+
+H5产物在 `dist/build/h5`。`npm run dev:h5`只启动前端；平时使用`npm run preview`同时启动验证服务。
+
+DCloud包按官方模板统一版本；由于官方模板固定的旧Vite和若干传递依赖有已知漏洞，本项目升级Vite6.4.3并使用package.json overrides。`.npmrc`设置legacy-peer-deps来兼容DCloud精确的旧peer要求。当前H5构建、21项测试和依赖审计通过；升级框架需复查构建与锁文件。
+
+## 官方角色素材与主页设计
+
+库洛米已换成三丽鸥[官方角色页面](https://www.sanrio.co.jp/characters/kuromi/)发布的原始PNG。素材位置及来源：`src/static/characters/SOURCES.md`。没有重绘或改色；官方来源不代表项目取得商业授权，课笺不是Sanrio官方应用。
+
+个人主页参考网易云音乐的封面、头像资料卡、统计和分区布局，将内容集合改为教学收藏夹、授课记录及常用服务，不复制音乐功能或制造社交数据。
+
+## 保留的业务规则
+
+月薪＝底薪（默认2000元）＋已完成课程课时费＋每笔招生实缴金额×提成比例＋晚辅单价×次数。
+
+新课90分钟算一课时、不足向上取整；原按小时记录保留旧规则。每节课保存价格快照。请假/取消不计课时费，晚辅按月设置单价和次数，招生缴费只在缴费月份计一次。
+
+上课/下课打卡、历史补录、时间冲突检测、重复排课、收款标记、JSON备份和CSV工资导出均保留。辉辉客服使用手机号15048452629复制后在微信联系。
+
+## 邮箱登录
+
+当前默认本机开发验证码模式：页面显示验证码并明确不发送邮件。可用任意格式正确的邮箱体验；不代表已验证邮箱所有权。
+
+真实邮件需要设置`.env.example`列出的SMTP环境变量，再启动预览。配置文件不自动加载。服务端发送，前端不获取邮件密钥。验证码5分钟有效、60秒重发间隔、错误次数和IP限流；会话Cookie在退出后失效，服务重启后需要重新登录。
+
+数据仅存在当前浏览器，无云同步。每邮箱独立数据不等同于对设备拥有者加密；请定期备份。
+
+## 鸿蒙目标与历史文件
+
+目标设备：华为nova 13（BLK-AL80），HarmonyOS6.1.0，API6.1.1（24）。用户确认全部页面后，再评估UniApp鸿蒙构建、签名与真机适配。
+
+`android/`、`releases/`与APK构建脚本为历史版本存档，不包含当前UniApp页面；不要使用旧APK验证本轮修改。

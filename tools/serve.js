@@ -3,7 +3,7 @@ import {readFile} from 'node:fs/promises';
 import path from 'node:path';
 import nodemailer from 'nodemailer';
 import {createAuth} from '../server/auth.js';
-const root=path.resolve('web'),port=Number(process.env.PORT||4173);
+const root=path.resolve('dist/build/h5'),port=Number(process.env.PORT||4174);
 const smtp=!!process.env.SMTP_HOST,production=process.env.NODE_ENV==='production';
 if(production&&!smtp)throw Error('生产模式必须配置SMTP');
 const devCodes=new Map();

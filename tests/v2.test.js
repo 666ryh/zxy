@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {emptyData,saveStudent,scheduleLessons,transition,parseBackup,amount} from '../web/domain.js';
-import {salarySummary,saveSalarySettings,addCommission} from '../web/salary.js';
+import {emptyData,saveStudent,scheduleLessons,transition,parseBackup,amount} from '../src/domain/domain.js';
+import {salarySummary,saveSalarySettings,addCommission} from '../src/domain/salary.js';
 test('新课时90分钟，不足向上取整，历史小时课保留',()=>{assert.equal(amount({start:'09:00',end:'10:00',rateCents:10000,billingMinutes:90}),10000);assert.equal(amount({start:'09:00',end:'10:31',rateCents:10000,billingMinutes:90}),20000);assert.equal(amount({start:'09:00',end:'10:30',rateCents:10000}),15000);});
 test('底薪+课时+按笔招生+固定晚辅，隔月提成不重复',()=>{const d=emptyData();const s=saveStudent(d,{name:'学生',rate:'100',billingMinutes:90,selfRecruited:true});const l=scheduleLessons(d,{studentId:s.id,date:'2026-09-01',start:'09:00',end:'10:00',rate:'100',billingMinutes:90})[0];transition(d,l.id,'complete',new Date('2026-09-02'));saveSalarySettings(d,'2026-09',{base:'2000',eveningRate:'50',eveningCount:'10'});addCommission(d,{studentId:s.id,date:'2026-09-01',amount:'3000',percent:'10'});const x=salarySummary(d,'2026-09');assert.equal(x.total,290000);assert.equal(x.commission,30000);assert.equal(x.units,1);assert.equal(salarySummary(d,'2026-10').commission,0);assert.equal(salarySummary(d,'2026-10').evening,0);});
 test('招生必须是自招学生，金额比例合法且不能重复记账',()=>{const d=emptyData();const s=saveStudent(d,{name:'学生',rate:'100'});const p={studentId:s.id,date:'2026-09-01',amount:'1000',percent:'10'};assert.throws(()=>addCommission(d,p));s.selfRecruited=true;assert.throws(()=>addCommission(d,{...p,percent:'101'}));assert.throws(()=>addCommission(d,{...p,date:'2026-02-30'}));addCommission(d,p);assert.throws(()=>addCommission(d,p),/重复/);});

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {emptyData,saveStudent,scheduleLessons,updateLesson,transition,summary,parseBackup} from '../web/domain.js';
+import {emptyData,saveStudent,scheduleLessons,updateLesson,transition,summary,parseBackup} from '../src/domain/domain.js';
 const now = new Date('2026-09-24T12:00:00');
 function fixture(){const d=emptyData();saveStudent(d,{name:'小林',subject:'数学',rate:'100.10'});return d;}
 function lesson(d,extra={}){return scheduleLessons(d,{studentId:d.students[0].id,date:'2026-09-24',start:'09:00',end:'10:30',rate:'100.10',...extra})[0];}
