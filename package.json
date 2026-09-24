@@ -1,0 +1,1 @@
+{"name":"kejian-teacher","private":true,"type":"module","scripts":{"test":"node --test tests/domain.test.js","preview":"node tools/serve.js"}}
