@@ -1,4 +1,5 @@
 import {loadAppearance} from './appearance.js';
+import {migrateLegacyData,exportNative} from './native.js';
 import {normalizeProfile,patchProfile} from './domain/profile.js';
 import {reactive,computed} from 'vue';
 import {emptyData,dateKey,addDays,saveStudent,scheduleLessons,transition,parseBackup} from './domain/domain.js';
@@ -40,12 +41,14 @@ export function navigate(tab){state.tab=tab;state.modal=null;
  const route=`#/pages/index/index?tab=${tab}`;if(location.hash!==route)history.replaceState(null,'',route);window.scrollTo(0,0);
  // #endif
 }
-export async function init(){loadAppearance();try{const r=await api('/api/session');state.user=r.user;state.mode=r.mode;}catch{state.mode='unavailable';}
+export async function init(){loadAppearance();let migrationError='';try{const r=await api('/api/session');state.user=r.user;state.mode=r.mode;}catch{state.mode='unavailable';}
  // #ifdef H5
  state.guest=sessionStorage.getItem('kejian-guest')==='true';
+ if(window.Native?.isOffline?.()){state.mode='offline';state.guest=true;try{migrateLegacyData(window.Native,get,set);}catch(e){migrationError='旧版数据迁移失败：'+e.message;}}
+ window.nativeFeedback=notify;
  const hash=location.hash;const tab=new URLSearchParams(hash.split('?')[1]||'').get('tab')||hash.slice(1);if(['schedule','students','payroll','attendance','profile'].includes(tab))state.tab=tab;
  // #endif
- load();state.ready=true;
+ load();if(migrationError)state.loadError=migrationError;state.ready=true;
 }
 export function enterGuest(){state.guest=true;
  // #ifdef H5
@@ -66,13 +69,14 @@ export const canDemo=computed(()=>!state.loadError&&!state.data.students.length&
 export function seedDemo(){if(!canDemo.value)throw Error('仅空数据可加载示例');mutate(d=>{const a=saveStudent(d,{name:'林小满',subject:'数学',rate:'180',billingMinutes:90,selfRecruited:true}),b=saveStudent(d,{name:'陈一诺',subject:'英语',rate:'160',billingMinutes:90}),c=saveStudent(d,{name:'周知夏',subject:'钢琴',rate:'220',billingMinutes:90,selfRecruited:true});for(const[s,start,end]of[[a,'09:00','10:30'],[b,'14:00','15:30'],[c,'17:00','18:30']])scheduleLessons(d,{studentId:s.id,date:dateKey(),start,end,rate:s.rateCents/100,billingMinutes:90,subject:s.subject});for(let i=1;i<=5;i++){const l=scheduleLessons(d,{studentId:i%2?a.id:b.id,date:addDays(dateKey(),-i),start:'10:00',end:'11:30',rate:'180',billingMinutes:90,subject:'个别辅导'})[0];transition(d,l.id,'complete');if(i>2)transition(d,l.id,'paid');}saveSalarySettings(d,dateKey().slice(0,7),{base:'2000',eveningRate:'50',eveningCount:8});addCommission(d,{studentId:a.id,date:dateKey(),amount:'3000',percent:'10'});});notify('示例数据已加入');}
 export function download(filename,content,type='application/json'){
  // #ifdef H5
+ if(exportNative(window.Native,filename,content,type))return;
  const url=URL.createObjectURL(new Blob([content],{type}));const a=document.createElement('a');a.href=url;a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(url),3000);return;
  // #endif
  // #ifndef H5
  notify('文件导出将在原生适配阶段接入');
  // #endif
 }
-export function exportBackup(){download(`课笺备份-${dateKey()}.json`,state.loadError?get(key()):JSON.stringify(state.data,null,2));}
+export function exportBackup(){download(`课笺备份-${dateKey()}.json`,state.loadError?(get(key())||globalThis.Native?.load?.()||''):JSON.stringify(state.data,null,2));}
 export function importBackup(){
  // #ifdef H5
  const input=document.createElement('input');input.type='file';input.accept='.json,application/json';input.onchange=async()=>{try{const file=input.files[0];if(!file)return;if(file.size>5000000)throw Error('文件超过5MB');const d=parseBackup(await file.text());if(!await confirmAction(`恢复${d.students.length}位学生、${d.lessons.length}节课程并替换当前数据？`))return;writeSaved(set,key(),d);state.data=d;state.loadError='';state.modal=null;notify('备份已恢复');}catch(e){notify(e.message);}};input.click();

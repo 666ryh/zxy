@@ -16,8 +16,9 @@ public class MainActivity extends Activity {
     private WebView web;
     private AtomicFile database;
     private String pendingExport;
+    private ValueCallback<Uri[]> fileCallback;
     private static final String ORIGIN = "https://app.kejian.local/";
-    private static final int EXPORT = 101, IMPORT = 102, MAX_SIZE = 5_000_000;
+    private static final int EXPORT = 101, IMPORT = 102, PICK_FILE = 103, MAX_SIZE = 5_000_000;
 
     @Override public void onCreate(Bundle saved) {
         super.onCreate(saved);
@@ -27,7 +28,7 @@ public class MainActivity extends Activity {
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
         settings.setAllowFileAccess(false);
-        settings.setAllowContentAccess(false);
+        settings.setAllowContentAccess(true);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         settings.setTextZoom(Math.round(getResources().getConfiguration().fontScale * 100));
         web.addJavascriptInterface(new LocalBridge(), "Native");
@@ -41,15 +42,28 @@ public class MainActivity extends Activity {
                     if (!url.startsWith(ORIGIN)) throw new IOException("External request blocked");
                     String path = request.getUrl().getPath();
                     if (path == null || path.equals("/")) path = "/index.html";
-                    if (!path.matches("/[a-zA-Z0-9._-]+")) throw new IOException("Invalid asset");
-                    String mime = path.endsWith(".js") ? "text/javascript" : path.endsWith(".css") ? "text/css" : "text/html";
-                    return new WebResourceResponse(mime,"UTF-8",getAssets().open("web"+path));
+                    if (path.equals("/api/session")) return new WebResourceResponse("application/json","UTF-8",new ByteArrayInputStream("{\"user\":null,\"mode\":\"offline\"}".getBytes(StandardCharsets.UTF_8)));
+                    if (path.startsWith("/api/")) return new WebResourceResponse("application/json","UTF-8",503,"Offline",null,new ByteArrayInputStream("{\"error\":\"Offline package has no email service\"}".getBytes(StandardCharsets.UTF_8)));
+                    if (!path.matches("/[a-zA-Z0-9._/-]+") || path.contains("..") || path.contains("//")) throw new IOException("Invalid asset");
+                    String mime = path.endsWith(".js") ? "text/javascript" : path.endsWith(".css") ? "text/css" : path.endsWith(".svg") ? "image/svg+xml" : path.endsWith(".png") ? "image/png" : path.endsWith(".jpg") || path.endsWith(".jpeg") ? "image/jpeg" : path.endsWith(".webp") ? "image/webp" : path.endsWith(".woff2") ? "font/woff2" : path.endsWith(".ttf") ? "font/ttf" : path.endsWith(".json") ? "application/json" : "text/html";
+                    return new WebResourceResponse(mime,mime.startsWith("text/") || mime.equals("application/json") ? "UTF-8" : null,getAssets().open("web"+path));
                 } catch (IOException e) {
                     return new WebResourceResponse("text/plain","UTF-8",404,"Not found",null,new ByteArrayInputStream(new byte[0]));
                 }
             }
         });
         web.setWebChromeClient(new WebChromeClient(){
+            @Override public boolean onShowFileChooser(WebView view,ValueCallback<Uri[]> callback,FileChooserParams params){
+                if(fileCallback!=null)fileCallback.onReceiveValue(null);
+                fileCallback=callback;
+                Intent intent=new Intent(Intent.ACTION_OPEN_DOCUMENT);
+                intent.addCategory(Intent.CATEGORY_OPENABLE);
+                String[] accepts=params.getAcceptTypes();
+                boolean images=accepts!=null&&accepts.length>0&&accepts[0].startsWith("image/");
+                intent.setType(images?"image/*":"*/*");
+                try{startActivityForResult(intent,PICK_FILE);}catch(Exception e){fileCallback.onReceiveValue(null);fileCallback=null;feedback("无法打开文件选择器");}
+                return true;
+            }
             @Override public boolean onJsAlert(WebView view,String url,String message,JsResult result){
                 new AlertDialog.Builder(MainActivity.this).setMessage(message).setPositiveButton("知道了",(d,w)->result.confirm()).setOnCancelListener(d->result.cancel()).show();return true;
             }
@@ -68,8 +82,9 @@ public class MainActivity extends Activity {
             return out.toString("UTF-8");
         }
     }
-    private void feedback(String text){runOnUiThread(()->web.evaluateJavascript("window.nativeFeedback("+JSONObject.quote(text)+")",null));}
+    private void feedback(String text){runOnUiThread(()->web.evaluateJavascript("window.nativeFeedback && window.nativeFeedback("+JSONObject.quote(text)+")",null));}
     public class LocalBridge {
+        @JavascriptInterface public boolean isOffline(){return true;}
         @JavascriptInterface public synchronized String load(){
             try {if(!database.getBaseFile().exists()&&!new File(database.getBaseFile()+".bak").exists())return "";return readLimited(database.openRead());}
             catch(Exception e){return "{\"readError\":true}";}
@@ -87,6 +102,7 @@ public class MainActivity extends Activity {
     }
     @Override protected void onActivityResult(int request,int result,Intent intent){
         super.onActivityResult(request,result,intent);
+        if(request==PICK_FILE){if(fileCallback!=null){Uri uri=result==RESULT_OK&&intent!=null?intent.getData():null;fileCallback.onReceiveValue(uri==null?null:new Uri[]{uri});fileCallback=null;}return;}
         if(result!=RESULT_OK||intent==null||intent.getData()==null){pendingExport=null;return;}
         Uri uri=intent.getData();
         try {
@@ -95,5 +111,5 @@ public class MainActivity extends Activity {
         }catch(Exception e){feedback("文件操作失败："+e.getMessage());}
     }
     @Override public void onBackPressed(){web.evaluateJavascript("window.closeSheet ? window.closeSheet() : false",value->{if(!"true".equals(value))new AlertDialog.Builder(this).setMessage("退出课笺？数据已自动保存。").setPositiveButton("退出",(d,w)->finish()).setNegativeButton("继续使用",null).show();});}
-    @Override protected void onDestroy(){web.removeJavascriptInterface("Native");web.destroy();super.onDestroy();}
+    @Override protected void onDestroy(){if(fileCallback!=null){fileCallback.onReceiveValue(null);fileCallback=null;}web.removeJavascriptInterface("Native");web.destroy();super.onDestroy();}
 }
