@@ -1,4 +1,5 @@
 import http from 'node:http';
+import {createHumanSupport} from '../server/human-support.js';
 import {createSupport} from '../server/support.js';
 import {readFile} from 'node:fs/promises';
 import path from 'node:path';
@@ -17,6 +18,7 @@ const publicOrigin=production?new URL(process.env.PUBLIC_ORIGIN||'http://invalid
 if(production&&publicOrigin.protocol!=='https:')throw Error('生产环境需配置HTTPS的PUBLIC_ORIGIN');
 const database=await openDatabase(databaseOptions(),process.env.AUTH_DATA_FILE||path.resolve('server/data/accounts.json'));
 const accounts=database.accounts;
+const human=await createHumanSupport(database.pool,{staffEmails:process.env.SUPPORT_STAFF_EMAILS});
 let backupRunning=false;
 async function dailyBackup(){if(backupRunning)return;backupRunning=true;try{await backupDatabase();}catch{console.error('数据库每日备份失败，请检查mysqldump配置与备份目录');}finally{backupRunning=false;}}
 dailyBackup();setInterval(dailyBackup,3600000).unref();
@@ -33,18 +35,29 @@ http.createServer(async(req,res)=>{
    if(req.headers.origin&&req.headers.origin!==(production?publicOrigin.origin:`http://${host}`)){respond(403,{error:'请求来源无效'});return;}
    const token=(req.headers.cookie||'').split(';').map(x=>x.trim()).find(x=>x.startsWith('kejian_session='))?.slice(15);
 
-   if(req.method==='GET'&&url.pathname==='/api/session'){respond(200,{user:await auth.session(token),mode,syncEnvironment:production?'remote':'local'});return;}
+   if(req.method==='GET'&&url.pathname==='/api/session'){const user=await auth.session(token);respond(200,{user,mode,supportStaff:human.isStaff(user),syncEnvironment:production?'remote':'local'});return;}
    const supportRoute=url.pathname==='/api/support/chat';
+   const humanRoute=url.pathname.startsWith('/api/human/'),staffRoute=url.pathname.startsWith('/api/staff/');
+   const protectedRoute=humanRoute||staffRoute;
    const syncRoute=url.pathname.startsWith('/api/sync');
-   const syncUser=(syncRoute||supportRoute)?await auth.session(token):null;
-   if((syncRoute||supportRoute)&&!syncUser){respond(401,{error:'请重新登录后同步，本机记录仍保留'});return;}
-   if((syncRoute||supportRoute)&&req.headers['x-sync-account']!==syncUser.email){respond(401,{error:'当前登录账号已改变，请刷新或重新登录；未同步其他账号的数据'});return;}
+   const syncUser=(syncRoute||supportRoute||protectedRoute)?await auth.session(token):null;
+   if((syncRoute||supportRoute||protectedRoute)&&!syncUser){respond(401,{error:'请重新登录后同步，本机记录仍保留'});return;}
+   if((syncRoute||supportRoute||protectedRoute)&&req.headers['x-sync-account']!==syncUser.email){respond(401,{error:'当前登录账号已改变，请刷新或重新登录；未同步其他账号的数据'});return;}
    if(req.method==='GET'&&url.pathname==='/api/sync'){respond(200,await database.sync.read(syncUser.id));return;}
    if(req.method==='GET'&&url.pathname==='/api/sync/history'){respond(200,{versions:await database.sync.history(syncUser.id)});return;}
    if(req.method==='GET'&&/^\/api\/sync\/history\/\d+$/.test(url.pathname)){respond(200,await database.sync.version(syncUser.id,Number(url.pathname.split('/').at(-1))));return;}
+   const staffMatch=url.pathname.match(/^\/api\/staff\/threads\/(\d+)(?:\/(send|read|close))?$/);
+   if(req.method==='GET'&&url.pathname==='/api/human/thread'){respond(200,await human.getOwn(syncUser,url.searchParams.get('after')||0));return;}
+   if(req.method==='GET'&&url.pathname==='/api/staff/threads'){respond(200,await human.list(syncUser,{q:url.searchParams.get('q')||'',status:url.searchParams.get('status')||''}));return;}
+   if(req.method==='GET'&&staffMatch&&!staffMatch[2]){respond(200,await human.getStaff(syncUser,staffMatch[1],url.searchParams.get('after')||0));return;}
    if(req.method!=='POST'){respond(405,{error:'请求方式不支持'});return;}
    if(!req.headers['content-type']?.startsWith('application/json')){respond(400,{error:'请求格式无效'});return;}
-   const chunks=[];let bytes=0;for await(const chunk of req){bytes+=chunk.length;if(bytes>(syncRoute?6500000:supportRoute?300000:4096)){respond(413,{error:'请求过大'});return;}chunks.push(chunk);}const input=JSON.parse(Buffer.concat(chunks).toString('utf8')||'{}');
+   const chunks=[];let bytes=0;for await(const chunk of req){bytes+=chunk.length;if(bytes>(syncRoute?6500000:supportRoute?300000:protectedRoute?12000:4096)){respond(413,{error:'请求过大'});return;}chunks.push(chunk);}const input=JSON.parse(Buffer.concat(chunks).toString('utf8')||'{}');
+   if(url.pathname==='/api/human/start'){respond(200,await human.start(syncUser));return;}
+   if(url.pathname==='/api/human/send'){respond(200,await human.send(syncUser,null,input));return;}
+   if(staffMatch&&staffMatch[2]==='send'){respond(200,await human.send(syncUser,staffMatch[1],input));return;}
+   if(staffMatch&&staffMatch[2]==='read'){respond(200,await human.markRead(syncUser,staffMatch[1],input.lastId));return;}
+   if(staffMatch&&staffMatch[2]==='close'){respond(200,await human.close(syncUser,staffMatch[1]));return;}
    if(supportRoute){respond(200,await support.reply(syncUser.id,input.messages));return;}
    if(url.pathname==='/api/sync'){respond(200,await database.sync.save(syncUser.id,input.expectedRevision,input.requestId,input.document));return;}
    if(url.pathname==='/api/auth/request'){if(mode==='unavailable'){respond(503,{error:'邮箱服务尚未配置，请联系管理员'});return;}const clientIp=production&&process.env.TRUST_PROXY==='true'?(req.headers['x-forwarded-for']||req.socket.remoteAddress).split(',').at(-1).trim():req.socket.remoteAddress;const {email}=await auth.request(input.email,clientIp);respond(200,{mode,...(development&&!smtp?{devCode:devCodes.get(email)}:{})});devCodes.delete(email);return;}

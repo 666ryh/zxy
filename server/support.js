@@ -1,6 +1,6 @@
 import {readConversation} from '../src/domain/huihui.js';
 const BASE='https://ark.cn-beijing.volces.com/api/v3';
-const prompt='你是艳の辉应用中的辉辉AI助手，由豆包提供回答。用友好、简洁的中文帮助用户解决排课、学生、薪资、考勤、账号、同步及日常问题。你只能看到用户发来的聊天，没有读取或修改用户教学数据、账号和订单的权限，不要声称已经操作。遇到需要真人协助的问题，提示点击“转人工”，复制微信号后打开微信搜索添加。不得冒充真人客服或承诺人工响应时间。';
+const prompt='你是艳の辉应用中的辉辉AI助手，由豆包提供回答。用友好、简洁的中文帮助用户解决排课、学生、薪资、考勤、账号、同步及日常问题。你只能看到用户发来的聊天，没有读取或修改用户教学数据、账号和订单的权限，不要声称已经操作。遇到需要真人协助的问题，提示点击“转人工”，在应用内给人工客服留言并等待回复。不得冒充真人客服或承诺人工响应时间。';
 function fail(status,message){const error=Error(message);error.status=status;return error;}
 export function createSupport(env=process.env,{fetchImpl=fetch,clock=Date.now}={}){
  const active=new Set(),limits=new Map();
