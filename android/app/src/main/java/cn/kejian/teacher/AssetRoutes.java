@@ -4,6 +4,8 @@ import java.net.URI;
 
 final class AssetRoutes {
     static final String ORIGIN="https://app.kejian.local/";
+    static final String CLOUD_ORIGIN="https://www.ryh6666.xyz/";
+    static boolean isCloud(String url){try{URI uri=URI.create(url);return "https".equalsIgnoreCase(uri.getScheme())&&"www.ryh6666.xyz".equalsIgnoreCase(uri.getHost())&&uri.getUserInfo()==null&&(uri.getPort()==-1||uri.getPort()==443);}catch(IllegalArgumentException e){return false;}}
     static String assetPath(String url) throws IOException {
         try {
             URI uri=URI.create(url);

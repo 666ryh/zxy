@@ -1,4 +1,10 @@
-> 当前已接入独立MySQL本机同步：127.0.0.1:3307，包含账号/教学数据/历史版本和数据库备份。使用方式与部署配置见 docs/mysql-sync.md。尚未上线公网，旧APK仍离线。
+# 艳の辉
+
+原“课笺”，3.1.1 起更名为“艳の辉”，图标使用用户提供的照片。保留原包名、签名和数据存储键，支持覆盖安装。
+
+> 2026-09-25 已部署至 https://www.ryh6666.xyz/ ：H5 网页、邮箱登录、云端 MySQL 同步、HTTPS 自动续期及数据库备份。运维与迁移说明见 [docs/cloud-deployment.md](docs/cloud-deployment.md)。下方早期记录保留作历史参考；旧 APK 仍离线。
+
+> 本机仍提供独立 MySQL 测试环境：127.0.0.1:3307。使用方式见 docs/mysql-sync.md。
 
 > 网页邮箱登录已接入真实QQ SMTP：后端读取server/.env.local，首次验证码验证自动注册，账号与会话保存到server/data。详见docs/qq-email-login.md；教学数据暂不云同步。历史打包说明不代表本轮重新打包。
 

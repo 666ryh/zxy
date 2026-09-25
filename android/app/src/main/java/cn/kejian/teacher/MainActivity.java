@@ -17,12 +17,13 @@ import java.io.*;
 import java.nio.charset.StandardCharsets;
 import org.json.JSONObject;
 
-/** Offline-only WebView. The bridge is reachable solely from bundled assets. */
+/** Cloud WebView with a bundled legacy-data recovery entry. */
 public class MainActivity extends Activity {
     private WebView web;
     private AtomicFile database;
     private String pendingExport;
     private ValueCallback<Uri[]> fileCallback;
+    private boolean offlineMode=false;
     private static final String ORIGIN = AssetRoutes.ORIGIN;
     private static final int EXPORT = 101, IMPORT = 102, PICK_FILE = 103, MAX_SIZE = 5_000_000;
 
@@ -37,11 +38,13 @@ public class MainActivity extends Activity {
         settings.setAllowContentAccess(true);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         settings.setTextZoom(Math.round(getResources().getConfiguration().fontScale * 100));
+        CookieManager.getInstance().setAcceptCookie(true);
+        CookieManager.getInstance().setAcceptThirdPartyCookies(web,false);
         web.addJavascriptInterface(new LocalBridge(), "Native");
         web.setWebViewClient(new WebViewClient() {
-            @Override public boolean shouldOverrideUrlLoading(WebView view,String url) {return !isLocal(url);}
+            @Override public boolean shouldOverrideUrlLoading(WebView view,String url) {return !allowedNavigation(url);}
             @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-                return !isLocal(request.getUrl().toString());
+                return !allowedNavigation(request.getUrl().toString());
             }
             @Override public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
                 return localResponse(request.getUrl().toString());
@@ -49,7 +52,7 @@ public class MainActivity extends Activity {
             @Override public WebResourceResponse shouldInterceptRequest(WebView view,String url){return localResponse(url);}
             // Asset requests can report HTTP errors independently. Do not replace the whole page
             // for a non-main resource; the bundled entry page remains usable offline.
-            @Override public void onReceivedHttpError(WebView view,WebResourceRequest request,WebResourceResponse response){Log.w("KejianAssets","Bundled resource HTTP "+response.getStatusCode()+": "+request.getUrl());}
+            @Override public void onReceivedHttpError(WebView view,WebResourceRequest request,WebResourceResponse response){if(request.isForMainFrame())showStartupError("服务器暂时不可用（"+response.getStatusCode()+"）");else Log.w("KejianAssets","Resource HTTP "+response.getStatusCode());}
             @Override public void onReceivedError(WebView view,WebResourceRequest request,WebResourceError error){if(request.isForMainFrame())showStartupError("WebView "+error.getErrorCode());else Log.w("KejianAssets","Bundled resource error: "+request.getUrl());}
         });
         web.setWebChromeClient(new WebChromeClient(){
@@ -80,8 +83,11 @@ public class MainActivity extends Activity {
     }
 
     private boolean isLocal(String url){try{AssetRoutes.assetPath(url);return true;}catch(IOException e){return false;}}
+    private boolean allowedNavigation(String url){return offlineMode?url.startsWith(ORIGIN)&&isLocal(url):AssetRoutes.isCloud(url);}
     private WebResourceResponse localResponse(String url){
+        if(!offlineMode&&AssetRoutes.isCloud(url))return null;
         try{
+            if(!offlineMode||!url.startsWith(ORIGIN))throw new IOException("External URL blocked");
             String path=AssetRoutes.assetPath(url);
             if(path.equals("web/api/session"))return new WebResourceResponse("application/json","UTF-8",new ByteArrayInputStream("{\"user\":null,\"mode\":\"offline\"}".getBytes(StandardCharsets.UTF_8)));
             if(path.startsWith("web/api/"))return new WebResourceResponse("application/json","UTF-8",503,"Offline",null,new ByteArrayInputStream("{\"error\":\"Offline package has no email service\"}".getBytes(StandardCharsets.UTF_8)));
@@ -90,6 +96,7 @@ public class MainActivity extends Activity {
         }catch(IOException e){Log.e("KejianAssets","Local asset request failed: "+url,e);return new WebResourceResponse("text/plain","UTF-8",404,"Not found",null,new ByteArrayInputStream(new byte[0]));}
     }
     private void loadHome(){
+        if(!offlineMode){web.loadUrl(AssetRoutes.CLOUD_ORIGIN);return;}
         try{
             // Read the entry directly; retain the existing HTTPS origin for modules and stored data.
             String html=readLimited(getAssets().open("web/index.html"));
@@ -100,8 +107,9 @@ public class MainActivity extends Activity {
     }
     private void showStartupError(String detail){runOnUiThread(()->{
         LinearLayout panel=new LinearLayout(this);panel.setOrientation(LinearLayout.VERTICAL);panel.setPadding(48,80,48,48);
-        TextView message=new TextView(this);message.setText("课笺启动失败\n"+detail+"\n请保留应用数据，尝试重新打开或更新安装包。");message.setTextSize(18);panel.addView(message);
+        TextView message=new TextView(this);message.setText("艳の辉启动失败\n"+detail+"\n请保留应用数据，尝试重新打开或更新安装包。");message.setTextSize(18);panel.addView(message);
         Button retry=new Button(this);retry.setText("重新加载");retry.setOnClickListener(v->{setContentView(web);loadHome();});panel.addView(retry);setContentView(panel);
+        Button legacy=new Button(this);legacy.setText("打开旧版本机数据");legacy.setOnClickListener(v->{offlineMode=true;setContentView(web);loadHome();});panel.addView(legacy);
     });}
 
     private String readLimited(InputStream stream) throws IOException {
@@ -113,7 +121,7 @@ public class MainActivity extends Activity {
     }
     private void feedback(String text){runOnUiThread(()->web.evaluateJavascript("window.nativeFeedback && window.nativeFeedback("+JSONObject.quote(text)+")",null));}
     public class LocalBridge {
-        @JavascriptInterface public boolean isOffline(){return true;}
+        @JavascriptInterface public boolean isOffline(){return offlineMode;}
         @JavascriptInterface public synchronized String load(){
             try {if(!database.getBaseFile().exists()&&!new File(database.getBaseFile()+".bak").exists())return "";return readLimited(database.openRead());}
             catch(Exception e){return "{\"readError\":true}";}
@@ -124,7 +132,7 @@ public class MainActivity extends Activity {
             catch(Exception e){if(out!=null)database.failWrite(out);return "保存失败，原数据已保留："+e.getMessage();}
         }
         @JavascriptInterface public String exportFile(String filename,String mime,String content){
-            if(content==null||content.getBytes(StandardCharsets.UTF_8).length>MAX_SIZE)return "导出内容超过5MB";
+            if(content==null||content.getBytes(StandardCharsets.UTF_8).length>20_000_000)return "导出内容超过20MB";
             runOnUiThread(()->{pendingExport=content;Intent intent=new Intent(Intent.ACTION_CREATE_DOCUMENT);intent.addCategory(Intent.CATEGORY_OPENABLE);intent.setType(mime);intent.putExtra(Intent.EXTRA_TITLE,filename);try{startActivityForResult(intent,EXPORT);}catch(Exception e){pendingExport=null;feedback("无法打开系统文件选择器");}});return "ok";
         }
         @JavascriptInterface public void importFile(){runOnUiThread(()->{Intent intent=new Intent(Intent.ACTION_OPEN_DOCUMENT);intent.addCategory(Intent.CATEGORY_OPENABLE);intent.setType("*/*");try{startActivityForResult(intent,IMPORT);}catch(Exception e){feedback("无法打开系统文件选择器");}});}
@@ -139,6 +147,9 @@ public class MainActivity extends Activity {
             if(request==IMPORT){String json=readLimited(getContentResolver().openInputStream(uri));web.evaluateJavascript("window.receiveBackup("+JSONObject.quote(json)+")",null);}
         }catch(Exception e){feedback("文件操作失败："+e.getMessage());}
     }
-    @Override public void onBackPressed(){web.evaluateJavascript("window.closeSheet ? window.closeSheet() : false",value->{if(!"true".equals(value))new AlertDialog.Builder(this).setMessage("退出课笺？数据已自动保存。").setPositiveButton("退出",(d,w)->finish()).setNegativeButton("继续使用",null).show();});}
+    @Override public boolean onCreateOptionsMenu(android.view.Menu menu){menu.add("云端艳の辉");menu.add("旧版本机数据（导出迁移）");return true;}
+    @Override public boolean onOptionsItemSelected(android.view.MenuItem item){offlineMode=!"云端艳の辉".contentEquals(item.getTitle());setContentView(web);loadHome();return true;}
+    @Override public void onBackPressed(){web.evaluateJavascript("window.closeSheet ? window.closeSheet() : false",value->{if(!"true".equals(value))new AlertDialog.Builder(this).setMessage("退出前请确认页面显示已同步。未上传的数据会保留在本机。").setPositiveButton("退出",(d,w)->finish()).setNegativeButton("继续使用",null).setNeutralButton(offlineMode?"返回云端":"旧版本机数据",(d,w)->{offlineMode=!offlineMode;setContentView(web);loadHome();}).show();});}
+    @Override protected void onPause(){CookieManager.getInstance().flush();super.onPause();}
     @Override protected void onDestroy(){if(fileCallback!=null){fileCallback.onReceiveValue(null);fileCallback=null;}web.removeJavascriptInterface("Native");web.destroy();super.onDestroy();}
 }

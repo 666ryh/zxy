@@ -11,6 +11,9 @@ import java.util.regex.*;
 public final class AssetRoutesTest {
     private static void require(boolean value,String message){if(!value)throw new AssertionError(message);}
     public static void main(String[] args) throws Exception {
+        require(AssetRoutes.isCloud("https://www.ryh6666.xyz/"),"cloud home");
+        require(AssetRoutes.isCloud("https://www.ryh6666.xyz/api/session"),"cloud API");
+        for(String url:new String[]{"http://www.ryh6666.xyz/","https://www.ryh6666.xyz.evil/","https://www.ryh6666.xyz@evil/","https://www.ryh6666.xyz:444/","file:///private","javascript:alert(1)"})require(!AssetRoutes.isCloud(url),"blocked cloud URL: "+url);
         require("web/index.html".equals(AssetRoutes.assetPath(AssetRoutes.ORIGIN)),"root page");
         require("web/index.html".equals(AssetRoutes.assetPath("file:///android_asset/web/index.html")),"android asset root");
         require("web/index.html".equals(AssetRoutes.assetPath("https://app.kejian.local")),"empty path root");

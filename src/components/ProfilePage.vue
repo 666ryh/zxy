@@ -11,7 +11,7 @@ const section=ref('home');
 const stats=computed(()=>summary(state.data,dateKey().slice(0,7)));
 const salary=computed(()=>salarySummary(state.data,dateKey().slice(0,7)));
 const recent=computed(()=>[...state.data.lessons].filter(l=>l.status==='completed').sort((a,b)=>b.date.localeCompare(a.date)).slice(0,8));
-const services=[['sync','download','同步与恢复','自动同步、冲突处理、历史版本'],['appearance','settings','页面背景','每页图片、透明度与文字颜色'],['salary','payroll','薪资设置','底薪、晚辅与招生提成'],['attendance','attendance','我的考勤','记录每一次认真'],['backup','download','数据与备份','给教学手账留一份副本'],['support','chat','联系辉辉','自动回复 · 趣味聊天'],['about','star','关于课笺','我的紫色教学手账']];
+const services=[['sync','download','同步与恢复','自动同步、冲突处理、历史版本'],['appearance','settings','页面背景','每页图片、透明度与文字颜色'],['salary','payroll','薪资设置','底薪、晚辅与招生提成'],['attendance','attendance','我的考勤','记录每一次认真'],['backup','download','数据与备份','给教学手账留一份副本'],['support','chat','联系辉辉','自动回复 · 趣味聊天'],['about','star','关于艳の辉','我的紫色教学手账']];
 function open(action){if(action==='sync'){cloud.open=true;return;}if(action==='appearance'){appearance.open=true;return;}if(action==='support'){state.supportOpen=true;return;}if(action==='attendance')navigate('attendance');else{if(action==='salary')state.month=dateKey().slice(0,7);state.modal={type:action};}}
 </script>
 <template>

@@ -3,8 +3,10 @@ import {pickAlbumImage} from './album.js';
 import {resolveAppearance,updateAppearance} from './domain/appearance.js';
 export const appearance=reactive({pages:{},open:false});
 const KEY='kejian-appearance-v1';
+let accountSave=null;
+export function bindAppearance(save){accountSave=save;}
 export function loadAppearance(){try{const saved=uni.getStorageSync(KEY);const raw=typeof saved==='string'?JSON.parse(saved):saved;if(!raw||typeof raw!=='object')return;let valid={};for(const [key,p]of Object.entries(raw))valid=updateAppearance(valid,key,p);appearance.pages=valid;}catch{appearance.pages={};}}
-export function saveAppearance(page,patch){const next=updateAppearance(appearance.pages,page,patch);uni.setStorageSync(KEY,JSON.stringify(next));appearance.pages=next;}
+export function saveAppearance(page,patch){const next=updateAppearance(appearance.pages,page,patch);if(accountSave)accountSave(next);else uni.setStorageSync(KEY,JSON.stringify(next));appearance.pages=next;}
 export function wallpaperStyle(page){const p=resolveAppearance(appearance.pages,page);if(!p.image)return {};return {backgroundImage:`url("${p.image}")`,backgroundSize:p.fit,backgroundPosition:`${p.position}% center`};}
 export function themeStyle(page){const p=resolveAppearance(appearance.pages,page);return {'--wall-surface':`rgba(${p.tone==='light'?'18,12,28':'255,255,255'},${p.opacity/100})`,'--wall-ink':p.tone==='light'?'#ffffff':'#251b32','--wall-muted':p.tone==='light'?'#f4edf9':'#453a50','--wall-shade':`rgba(${p.tone==='light'?'0,0,0':'255,255,255'},${p.shade/100})`,'--wall-shadow':p.tone==='light'?'0 1px 4px #000b':'0 1px 3px #fffc'};}
 export async function chooseWallpaper(){

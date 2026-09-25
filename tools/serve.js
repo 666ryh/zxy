@@ -19,7 +19,7 @@ const accounts=database.accounts;
 let backupRunning=false;
 async function dailyBackup(){if(backupRunning)return;backupRunning=true;try{await backupDatabase();}catch{console.error('数据库每日备份失败，请检查mysqldump配置与备份目录');}finally{backupRunning=false;}}
 dailyBackup();setInterval(dailyBackup,3600000).unref();
-const auth=createAuth({accounts,send:async(email,code)=>{if(smtp){const result=await transport.sendMail({from:{name:'课笺',address:mail.from},to:email,subject:'课笺 · 注册与登录验证码',text:`你的课笺验证码是 ${code}，5分钟内有效。首次验证会创建账号，已有账号会直接登录。请勿将验证码告诉他人；如非本人操作请忽略。`});if(!result.accepted?.length)throw Error('Mail rejected');}else if(development)devCodes.set(email,code);else throw Error('Email not configured');}});
+const auth=createAuth({accounts,send:async(email,code)=>{if(smtp){const result=await transport.sendMail({from:{name:'艳の辉',address:mail.from},to:email,subject:'艳の辉 · 注册与登录验证码',text:`你的艳の辉验证码是 ${code}，5分钟内有效。首次验证会创建账号，已有账号会直接登录。请勿将验证码告诉他人；如非本人操作请忽略。`});if(!result.accepted?.length)throw Error('Mail rejected');}else if(development)devCodes.set(email,code);else throw Error('Email not configured');}});
 const mode=smtp?'email':development?'development':'unavailable';
 http.createServer(async(req,res)=>{
  res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','same-origin');
@@ -50,4 +50,4 @@ http.createServer(async(req,res)=>{
   }
   const file=path.resolve(root,'.'+decodeURIComponent(url.pathname==='/'?'/index.html':url.pathname));if(!file.startsWith(root+path.sep))throw Error('Not found');const content=await readFile(file);res.setHeader('Cache-Control','no-cache');res.setHeader('Content-Type',({'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.svg':'image/svg+xml'})[path.extname(file)]||'application/octet-stream');res.end(content);
  }catch(error){if(req.url.startsWith('/api/')){const message=error.code?'服务器暂时无法保存数据，请稍后重试':error instanceof SyntaxError?'请求格式不正确':error.message;respond(error.status||400,{error:message});}else{res.statusCode=404;res.end('Not found');}}
-}).listen(port,production?'0.0.0.0':'127.0.0.1',()=>console.log(`课笺服务 :${port} · ${smtp?'真实邮箱验证码':development?'开发验证码模式（不发送邮件）':'邮箱服务未配置'} · ${production?'服务器同步':'本机同步测试'}`));
+}).listen(port,production?'0.0.0.0':'127.0.0.1',()=>console.log(`艳の辉服务 :${port} · ${smtp?'真实邮箱验证码':development?'开发验证码模式（不发送邮件）':'邮箱服务未配置'} · ${production?'服务器同步':'本机同步测试'}`));
