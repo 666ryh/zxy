@@ -30,7 +30,7 @@ export function notify(title){uni.showToast({title,icon:'none',duration:2600});}
 export async function confirmAction(content){return new Promise(resolve=>uni.showModal({title:'请确认',content,confirmColor:'#7952a5',success:r=>resolve(r.confirm),fail:()=>resolve(false)}));}
 export async function api(route,body,expectedAccount){
  // #ifdef H5
- const owner=expectedAccount||(route.startsWith('/api/sync')?state.user?.email:null);const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),20000);try{const response=await fetch(route,{method:body?'POST':'GET',headers:{...(body?{'Content-Type':'application/json'}:{}),...(owner?{'X-Sync-Account':owner}:{})},body:body?JSON.stringify(body):undefined,signal:controller.signal});const json=await response.json();if(!response.ok){const e=Error(json.error||'请求失败');e.status=response.status;throw e;}return json;}finally{clearTimeout(timeout);}
+ const owner=expectedAccount||((route.startsWith('/api/sync')||route==='/api/support/chat')?state.user?.email:null);const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),route==='/api/support/chat'?55000:20000);try{const response=await fetch(route,{method:body?'POST':'GET',headers:{...(body?{'Content-Type':'application/json'}:{}),...(owner?{'X-Sync-Account':owner}:{})},body:body?JSON.stringify(body):undefined,signal:controller.signal});const json=await response.json();if(!response.ok){const e=Error(json.error||'请求失败');e.status=response.status;throw e;}return json;}finally{clearTimeout(timeout);}
  // #endif
  // #ifndef H5
  throw Error('当前为H5预览，原生登录服务将在鸿蒙适配阶段配置');

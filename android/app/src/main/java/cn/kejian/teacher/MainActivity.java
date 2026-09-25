@@ -121,6 +121,13 @@ public class MainActivity extends Activity {
     }
     private void feedback(String text){runOnUiThread(()->web.evaluateJavascript("window.nativeFeedback && window.nativeFeedback("+JSONObject.quote(text)+")",null));}
     public class LocalBridge {
+        @JavascriptInterface public String openWechat(){
+            runOnUiThread(()->{android.content.ClipboardManager clipboard=(android.content.ClipboardManager)getSystemService(CLIPBOARD_SERVICE);clipboard.setPrimaryClip(android.content.ClipData.newPlainText("人工客服微信","ryh520zxy1314"));});
+            Intent launch=getPackageManager().getLaunchIntentForPackage("com.tencent.mm");
+            if(launch==null)return "未安装微信，微信号已复制：ryh520zxy1314";
+            runOnUiThread(()->{try{android.content.ClipboardManager clipboard=(android.content.ClipboardManager)getSystemService(CLIPBOARD_SERVICE);clipboard.setPrimaryClip(android.content.ClipData.newPlainText("人工客服微信","ryh520zxy1314"));startActivity(launch);}catch(Exception e){feedback("无法打开微信，请手动搜索 ryh520zxy1314");}});
+            return "ok";
+        }
         @JavascriptInterface public boolean isOffline(){return offlineMode;}
         @JavascriptInterface public synchronized String load(){
             try {if(!database.getBaseFile().exists()&&!new File(database.getBaseFile()+".bak").exists())return "";return readLimited(database.openRead());}

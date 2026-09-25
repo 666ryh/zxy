@@ -1,4 +1,5 @@
 import http from 'node:http';
+import {createSupport} from '../server/support.js';
 import {readFile} from 'node:fs/promises';
 import path from 'node:path';
 import nodemailer from 'nodemailer';
@@ -20,6 +21,7 @@ let backupRunning=false;
 async function dailyBackup(){if(backupRunning)return;backupRunning=true;try{await backupDatabase();}catch{console.error('数据库每日备份失败，请检查mysqldump配置与备份目录');}finally{backupRunning=false;}}
 dailyBackup();setInterval(dailyBackup,3600000).unref();
 const auth=createAuth({accounts,send:async(email,code)=>{if(smtp){const result=await transport.sendMail({from:{name:'艳の辉',address:mail.from},to:email,subject:'艳の辉 · 注册与登录验证码',text:`你的艳の辉验证码是 ${code}，5分钟内有效。首次验证会创建账号，已有账号会直接登录。请勿将验证码告诉他人；如非本人操作请忽略。`});if(!result.accepted?.length)throw Error('Mail rejected');}else if(development)devCodes.set(email,code);else throw Error('Email not configured');}});
+const support=createSupport();
 const mode=smtp?'email':development?'development':'unavailable';
 http.createServer(async(req,res)=>{
  res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','same-origin');
@@ -32,16 +34,18 @@ http.createServer(async(req,res)=>{
    const token=(req.headers.cookie||'').split(';').map(x=>x.trim()).find(x=>x.startsWith('kejian_session='))?.slice(15);
 
    if(req.method==='GET'&&url.pathname==='/api/session'){respond(200,{user:await auth.session(token),mode,syncEnvironment:production?'remote':'local'});return;}
+   const supportRoute=url.pathname==='/api/support/chat';
    const syncRoute=url.pathname.startsWith('/api/sync');
-   const syncUser=syncRoute?await auth.session(token):null;
-   if(syncRoute&&!syncUser){respond(401,{error:'请重新登录后同步，本机记录仍保留'});return;}
-   if(syncRoute&&req.headers['x-sync-account']!==syncUser.email){respond(401,{error:'当前登录账号已改变，请刷新或重新登录；未同步其他账号的数据'});return;}
+   const syncUser=(syncRoute||supportRoute)?await auth.session(token):null;
+   if((syncRoute||supportRoute)&&!syncUser){respond(401,{error:'请重新登录后同步，本机记录仍保留'});return;}
+   if((syncRoute||supportRoute)&&req.headers['x-sync-account']!==syncUser.email){respond(401,{error:'当前登录账号已改变，请刷新或重新登录；未同步其他账号的数据'});return;}
    if(req.method==='GET'&&url.pathname==='/api/sync'){respond(200,await database.sync.read(syncUser.id));return;}
    if(req.method==='GET'&&url.pathname==='/api/sync/history'){respond(200,{versions:await database.sync.history(syncUser.id)});return;}
    if(req.method==='GET'&&/^\/api\/sync\/history\/\d+$/.test(url.pathname)){respond(200,await database.sync.version(syncUser.id,Number(url.pathname.split('/').at(-1))));return;}
    if(req.method!=='POST'){respond(405,{error:'请求方式不支持'});return;}
    if(!req.headers['content-type']?.startsWith('application/json')){respond(400,{error:'请求格式无效'});return;}
-   const chunks=[];let bytes=0;for await(const chunk of req){bytes+=chunk.length;if(bytes>(syncRoute?6500000:4096)){respond(413,{error:'请求过大'});return;}chunks.push(chunk);}const input=JSON.parse(Buffer.concat(chunks).toString('utf8')||'{}');
+   const chunks=[];let bytes=0;for await(const chunk of req){bytes+=chunk.length;if(bytes>(syncRoute?6500000:supportRoute?300000:4096)){respond(413,{error:'请求过大'});return;}chunks.push(chunk);}const input=JSON.parse(Buffer.concat(chunks).toString('utf8')||'{}');
+   if(supportRoute){respond(200,await support.reply(syncUser.id,input.messages));return;}
    if(url.pathname==='/api/sync'){respond(200,await database.sync.save(syncUser.id,input.expectedRevision,input.requestId,input.document));return;}
    if(url.pathname==='/api/auth/request'){if(mode==='unavailable'){respond(503,{error:'邮箱服务尚未配置，请联系管理员'});return;}const clientIp=production&&process.env.TRUST_PROXY==='true'?(req.headers['x-forwarded-for']||req.socket.remoteAddress).split(',').at(-1).trim():req.socket.remoteAddress;const {email}=await auth.request(input.email,clientIp);respond(200,{mode,...(development&&!smtp?{devCode:devCodes.get(email)}:{})});devCodes.delete(email);return;}
    if(url.pathname==='/api/auth/verify'){const value=await auth.verify(input.email,input.code);res.setHeader('Set-Cookie',`kejian_session=${value}; HttpOnly; SameSite=Strict; Path=/; Max-Age=604800${production?'; Secure':''}`);respond(200,{user:await auth.session(value)});return;}
